@@ -10,4 +10,5 @@ Format: Date | Decision | Reason
 - 2026-11-12 | `app.processing.validation.validate_compatibility` is the single compatibility rule source of truth; V-VALID skips unreadable/corrupt TIFFs during sync validation | Keeps validation DRY across API and pipeline while preserving async `failed` job handling for corrupt rasters.
 - 2026-11-12 | Standardized HTTP 403/404/413/422 validation, unknown routes, and path-traversal errors under `INVALID_REQUEST` envelope | Keeps all non-2xx API responses compliant with the Section 6 error envelope without exposing internal paths.
 - 2026-11-12 | Dashboard derives recent analyses from client-side stored job IDs hydrated via `GET /api/analysis/{job_id}` | Preserves the strict 8-endpoint API contract without adding a ninth list endpoint while showing live server status.
+- 2026-11-12 | Pinned `eslint@8.57.1` and `eslint-config-next@14.2.18` with `.eslintrc.json` extending `next/core-web-vitals` | Enables non-interactive `npm run lint` matching Next.js 14.2.18 while pinning exact package versions per Rule R9.
 

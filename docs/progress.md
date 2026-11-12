@@ -79,3 +79,9 @@
   - Real-Chrome backend-stop test (`f04_polling_error.png`): killing `uvicorn` mid-run showed `Polling Connection Error` + `Retry` while keeping `RUNNING` visible; restarting backend + clicking `Retry` resumed polling and reached `COMPLETED`.
   - Mobile width verification at 390px: `{"sw":390,"cw":390}` (`docs/evidence/fixes/f02_mobile_390px.png`).
   - Explore MapLibre `style.load` fix (`f05_demo_aoi_map.png`): `{"hasSource":true,"hasFill":true,"hasOutline":true}`.
+
+### Group 4 — Documentation & Lint (`F-01` & Lint Gap) — VERIFIED
+- Created `docs/architecture.md`, `docs/api-contracts.md`, and `docs/processing-method.md` directly from inspected source modules and regenerated `backend/openapi.json` / `frontend/lib/api-types.ts` via `make types`.
+- Added `frontend/.eslintrc.json` (`next/core-web-vitals`) and pinned `eslint@8.57.1` + `eslint-config-next@14.2.18`:
+  - `cd frontend && npm run lint`: `✔ No ESLint warnings or errors`.
+- Docker build and deployed URL: NOT VERIFIED, run on a machine with Docker.
