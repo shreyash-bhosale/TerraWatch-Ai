@@ -76,8 +76,11 @@ def test_export_results_and_geotiff_roundtrip(tmp_path):
     assert any("DEMO DATA" in lim for lim in meta_content["limitations"])
     assert "color_scales" in meta_content
     assert meta_content["color_scales"]["difference"]["symmetric"] is True
+    assert meta_content["color_scales"]["difference"]["colormap"] == "coolwarm"
+    assert meta_content["color_scales"]["before"]["colormap"] == "gray"
+    assert meta_content["color_scales"]["after"]["colormap"] == "gray"
 
-    # Check PNG image properties
+    # Check difference PNG image properties
     img = Image.open(diff_png)
     assert img.mode == "RGBA"
     assert img.size == (64, 64)
@@ -86,3 +89,19 @@ def test_export_results_and_geotiff_roundtrip(tmp_path):
     assert img_arr[0, 0, 3] == 0
     # Check that valid pixels (e.g. [10, 10]) have alpha == 255
     assert img_arr[10, 10, 3] == 255
+
+    # Check before/after PNGs use consistent single-hue grayscale ramp and preserve nodata alpha
+    b_img = Image.open(before_png)
+    a_img = Image.open(after_png)
+    assert b_img.mode == "RGBA" and b_img.size == (64, 64)
+    assert a_img.mode == "RGBA" and a_img.size == (64, 64)
+    b_arr = np.array(b_img)
+    a_arr = np.array(a_img)
+    # Valid pixel channels R == G == B (grayscale)
+    assert b_arr[10, 10, 0] == b_arr[10, 10, 1] == b_arr[10, 10, 2]
+    assert a_arr[10, 10, 0] == a_arr[10, 10, 1] == a_arr[10, 10, 2]
+    assert b_arr[10, 10, 3] == 255
+    assert a_arr[10, 10, 3] == 255
+    # Nodata blocks transparent: syn_before rows 0..3, cols 0..3; syn_after rows 60..63, cols 60..63
+    assert b_arr[0, 0, 3] == 0
+    assert a_arr[63, 63, 3] == 0

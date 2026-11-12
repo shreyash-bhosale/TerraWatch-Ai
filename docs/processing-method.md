@@ -43,11 +43,12 @@
 
 ## 4. Processing Pipeline (`backend/app/processing/pipeline.py`)
 
-1. **`reading` (`readers/geotiff.py`):** Reads band 1 as `float32` into `RasterData` (`array`, `crs`, `transform`, `bounds`, `resolution`, `nodata`, `units`), wrapping corrupted/missing files in `CorruptRasterError` / `FileNotFoundError`.
-2. **Compatibility check:** Invokes `validate_compatibility(...)`; failures raise `IncompatiblePipelineError` (`INCOMPATIBLE_OBSERVATIONS`).
-3. **AOI Windowing & Nodata Masking (`preprocessing.py`):**
-   - `compute_aoi_window` intersects the AOI bounding box with raster bounds and computes an integer pixel `rasterio.windows.Window`.
-   - `mask_nodata_to_nan` copies pixel arrays to `float32` and sets `np.isclose(arr, nodata) | np.isnan(arr) | ~np.isfinite(arr)` to `np.nan`.
+1. **`reading` (`readers/geotiff.py`):** Pre-validates headers cleanly without loading pixel arrays via `GeoTIFFReader.read_metadata()`, then performs windowed reads (`GeoTIFFReader.read(path, window=...)`) of band 1 as `float32` into `RasterData` (`array`, `crs`, `transform`, `bounds`, `resolution`, `nodata`, `units`), wrapping corrupted/missing files in `CorruptRasterError` / `FileNotFoundError`.
+2. **Compatibility check:** Invokes `validate_compatibility(...)`; failures raise `IncompatiblePipelineError` (`INCOMPATIBLE_OBSERVATIONS`). Within `V-VALID`, the AOI window is resolved via CRS-aware `compute_aoi_window()` and read strictly within that pixel window (failing explicitly on `EmptyWindowError`, `AoiTransformError`, or `< 1%` valid pixels).
+3. **CRS-Aware AOI Windowing & Nodata Masking (`preprocessing.py`):**
+   - `reproject_aoi_geometry` transforms incoming GeoJSON AOIs (default `EPSG:4326`) into the target raster CRS using `rasterio.warp.transform_geom` (short-circuiting when CRS matches `EPSG:4326`, rejecting invalid geometries or missing/unsupported CRSs with `AoiTransformError`).
+   - `compute_aoi_window` intersects the reprojected AOI polygon bounds with raster bounds and computes an integer pixel `rasterio.windows.Window`.
+   - `crop_to_aoi` and pipeline windowed reading finalize cropped rasters through shared `finalize_valid_raster` / `mask_nodata_to_nan`, copying pixels to `float32` and setting `np.isclose(arr, nodata) | np.isnan(arr) | ~np.isfinite(arr)` to `np.nan`.
 4. **`aligning` (`alignment.py`):**
    - `check_alignment` requires equal `crs` and matching `resolution` (`rtol=1e-4`).
    - If shape, bounds (`atol=1e-5`), and affine transform (`atol=1e-5`) match, returns inputs unchanged.
@@ -57,10 +58,10 @@
    - Builds `valid_mask = valid_before & valid_after` excluding nodata and non-finite pixels.
    - Computes `diff[valid_mask] = after.array[valid_mask] - before.array[valid_mask]` (`float32`), leaving invalid locations as `np.nan`.
 6. **`statistics` (`statistics.py`):**
-   - Computes `total_pixel_count`, `valid_pixel_count`, `invalid_pixel_count`, and over valid pixels: `mean`, `median`, `min`, `max`, `std` (or `nan` if 0 valid pixels).
+   - Computes `total_pixel_count`, `valid_pixel_count`, `invalid_pixel_count`, and over valid pixels: `mean`, `median`, `min`, `max`, and population standard deviation `std` (`ddof=0`, or `nan` if 0 valid pixels).
 7. **`exporting` (`export.py`):**
    - `difference.tif`: LZW-compressed `float32` GeoTIFF preserving aligned `crs` and `transform`, with `np.nan` mapped back to `nodata=-9999.0`.
    - `difference.png`: RGBA PNG rendered using symmetric percentiles (`p2`, `p98`, `vmax = max(|p2|, |p98|)`, clamped `>= 1.0` if 0) with matplotlib `"coolwarm"` diverging colormap centered at `0.0`, setting alpha `0` (transparent) on invalid pixels.
-   - `before.png`, `after.png`: RGBA PNGs using `"viridis"` (`[min, max]`) with transparent nodata.
+   - `before.png`, `after.png`: RGBA PNGs using single-hue `"gray"` (`[min, max]`) with transparent nodata (`alpha=0`).
    - `statistics.json` & `metadata.json`: Persist summary metrics, WGS84 `bounds` (transformed via `rasterio.warp.transform_bounds` when source CRS != `EPSG:4326`), `color_scales`, `limitations`, and `synthetic` status.
    - On any exception in `run_pipeline`, partial output artifacts in `output_dir` are atomically removed and stage transitions to `failed`.

@@ -172,5 +172,50 @@ describe('AnalysisPage', () => {
       expect(screen.getByText('COMPLETED')).toBeInTheDocument()
     })
   })
+
+  it('renders PASS, WARNING, and ERROR validation badges matching backend rule states (A4)', async () => {
+    vi.mocked(apiClient.validateAnalysis).mockResolvedValue({
+      compatible: false,
+      order: { before_id: 'syn_before', after_id: 'syn_after' },
+      rules: [
+        {
+          id: 'V-UNITS',
+          severity: 'error',
+          passed: true,
+          message: 'Both observations have compatible calibrated units (dB).',
+        },
+        {
+          id: 'V-POL',
+          severity: 'warning',
+          passed: true,
+          message: 'Polarization metadata missing for one or both observations.',
+        },
+        {
+          id: 'V-GRID',
+          severity: 'error',
+          passed: false,
+          message: 'Resolution mismatch detected.',
+        },
+      ],
+    })
+
+    render(
+      <Providers>
+        <AnalysisPage />
+      </Providers>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('V-UNITS')).toBeInTheDocument()
+    })
+
+    const passBadge = screen.getByText('PASS')
+    const warningBadge = screen.getByText('WARNING')
+    const errorBadge = screen.getByText('ERROR')
+
+    expect(passBadge).toHaveClass('text-emerald-400')
+    expect(warningBadge).toHaveClass('text-amber-400')
+    expect(errorBadge).toHaveClass('text-red-400')
+  })
 })
 

@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient, getAssetUrl, isApiError } from "@/lib/api";
 import { ResultsMap, type LayerType } from "@/components/map/ResultsMap";
+import { ResultsStatsCard } from "@/components/results/ResultsStatsCard";
+import { ResultsExportsCard } from "@/components/results/ResultsExportsCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +19,6 @@ import {
   Download,
   Info,
   Layers,
-  BarChart2,
   ArrowLeft,
   FileText,
   RefreshCw,
@@ -352,7 +353,7 @@ function ResultsContent() {
                       background:
                         activeLayer === "difference"
                           ? "linear-gradient(to right, #3b4cc0, #dddcdc, #b40426)"
-                          : "linear-gradient(to right, #440154, #21918c, #fde725)",
+                          : "linear-gradient(to right, #000000, #ffffff)",
                     }}
                     aria-label="Color scale bar"
                   />
@@ -408,129 +409,15 @@ function ResultsContent() {
 
         {/* Statistics & Metadata Sidebar */}
         <div className="flex flex-col gap-6">
-          {/* Statistics Card */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-blue-400" />
-                Valid Pixel Statistics
-              </CardTitle>
-              <CardDescription>Computed strictly on non-nodata intersecting pixels.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
-                  <span className="text-xs text-slate-500 block">Mean Difference</span>
-                  <span className="text-lg font-mono font-bold text-white" data-testid="stat-mean">
-                    {stats.mean.toFixed(4)} dB
-                  </span>
-                </div>
-                <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
-                  <span className="text-xs text-slate-500 block">Std Deviation</span>
-                  <span className="text-lg font-mono font-bold text-white" data-testid="stat-std">
-                    {stats.std.toFixed(4)} dB
-                  </span>
-                </div>
-                <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
-                  <span className="text-xs text-slate-500 block">Median</span>
-                  <span className="text-sm font-mono font-semibold text-slate-200">
-                    {stats.median.toFixed(4)} dB
-                  </span>
-                </div>
-                <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
-                  <span className="text-xs text-slate-500 block">Min / Max</span>
-                  <span className="text-sm font-mono font-semibold text-slate-200">
-                    {stats.min.toFixed(2)} / {stats.max.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-800 space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Valid Pixels:</span>
-                  <span className="font-mono text-emerald-400" data-testid="stat-valid-pixels">
-                    {stats.valid_pixel_count.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Invalid / Masked (nodata):</span>
-                  <span className="font-mono text-amber-400" data-testid="stat-invalid-pixels">
-                    {stats.invalid_pixel_count.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Total Window Pixels:</span>
-                  <span className="font-mono text-slate-300">
-                    {stats.total_pixel_count.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Processing Metadata & Exports */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Exported Artifacts & Metadata</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3 text-xs">
-              <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3 space-y-1.5 font-mono">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Before ID:</span>
-                  <span className="text-slate-200">{jobStatus?.before_id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">After ID:</span>
-                  <span className="text-slate-200">{jobStatus?.after_id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Synthetic Flag:</span>
-                  <span className={synthetic ? "text-amber-400" : "text-emerald-400"}>
-                    {synthetic ? "true (DEMO)" : "false"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">CRS Bounds:</span>
-                  <span className="text-slate-300">EPSG:4326</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2 pt-1">
-                <a
-                  href={getAssetUrl(geotiff_url)}
-                  download="difference.tif"
-                  className="flex items-center justify-between px-3 py-2 rounded-md bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 transition-colors"
-                >
-                  <span>Georeferenced Difference (GeoTIFF)</span>
-                  <Download className="w-3.5 h-3.5 text-blue-400" />
-                </a>
-                <a
-                  href={getAssetUrl(layers.difference_png)}
-                  download="difference.png"
-                  className="flex items-center justify-between px-3 py-2 rounded-md bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 transition-colors"
-                >
-                  <span>Colorized Difference Overlay (PNG)</span>
-                  <Download className="w-3.5 h-3.5 text-blue-400" />
-                </a>
-                <a
-                  href={getAssetUrl(`/files/outputs/${jobId}/statistics.json`)}
-                  download="statistics.json"
-                  className="flex items-center justify-between px-3 py-2 rounded-md bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 transition-colors"
-                >
-                  <span>Statistics Summary (JSON)</span>
-                  <Download className="w-3.5 h-3.5 text-blue-400" />
-                </a>
-                <a
-                  href={getAssetUrl(`/files/outputs/${jobId}/metadata.json`)}
-                  download="metadata.json"
-                  className="flex items-center justify-between px-3 py-2 rounded-md bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 transition-colors"
-                >
-                  <span>Provenance & Metadata (JSON)</span>
-                  <Download className="w-3.5 h-3.5 text-blue-400" />
-                </a>
-              </div>
-            </CardContent>
-          </Card>
+          <ResultsStatsCard stats={stats} />
+          <ResultsExportsCard
+            jobId={jobId}
+            beforeId={jobStatus?.before_id}
+            afterId={jobStatus?.after_id}
+            synthetic={synthetic}
+            geotiffUrl={geotiff_url}
+            differencePngUrl={layers.difference_png}
+          />
         </div>
       </div>
     </div>

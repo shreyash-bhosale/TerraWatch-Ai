@@ -4,6 +4,7 @@ import numpy as np
 from shapely.geometry import shape
 
 from app.processing.preprocessing import (
+    AoiTransformError,
     EmptyWindowError,
     compute_aoi_window,
     get_valid_mask,
@@ -33,6 +34,7 @@ def _slice_window_valid_mask(raster: RasterData, aoi_dict: Dict[str, Any]) -> np
         transform=raster.transform,
         width=raster.width,
         height=raster.height,
+        raster_crs=raster.crs,
     )
     r_start = int(window.row_off)
     r_end = int(window.row_off + window.height)
@@ -43,6 +45,28 @@ def _slice_window_valid_mask(raster: RasterData, aoi_dict: Dict[str, Any]) -> np
     return get_valid_mask(masked, nodata=raster.nodata)
 
 
+def _window_valid_mask(raster: RasterData) -> np.ndarray:
+    masked = mask_nodata_to_nan(raster.array, nodata=raster.nodata)
+    return get_valid_mask(masked, nodata=raster.nodata)
+
+
+def _read_window_for_observation(
+    reader: GeoTIFFReader,
+    asset_path: Any,
+    aoi_dict: Dict[str, Any],
+) -> RasterData:
+    hdr = reader.read_metadata(asset_path)
+    window = compute_aoi_window(
+        aoi_geometry=aoi_dict,
+        raster_bounds=hdr["bounds"],
+        transform=hdr["transform"],
+        width=hdr["width"],
+        height=hdr["height"],
+        raster_crs=hdr["crs"],
+    )
+    return reader.read(asset_path, window=window)
+
+
 def _evaluate_valid_pixel_fraction(
     before_obs: Observation,
     after_obs: Observation,
@@ -50,21 +74,29 @@ def _evaluate_valid_pixel_fraction(
     before_raster: Optional[RasterData],
     after_raster: Optional[RasterData],
     provider: Optional[Any],
+    rasters_pre_windowed: bool = False,
 ) -> Tuple[bool, Optional[float], Optional[str]]:
     """
     Evaluate valid pixel fraction in AOI window after nodata masking.
+    Uses windowed reads when loading from a provider so full rasters are not loaded.
     Returns (passed, valid_fraction_or_none, failure_reason_or_none).
     """
     r_b = before_raster
     r_a = after_raster
+    b_windowed = rasters_pre_windowed and r_b is not None
+    a_windowed = rasters_pre_windowed and r_a is not None
 
     if (r_b is None or r_a is None) and provider is not None:
         try:
             reader = GeoTIFFReader()
             if r_b is None:
-                r_b = reader.read(provider.open_asset(before_obs.id))
+                r_b = _read_window_for_observation(reader, provider.open_asset(before_obs.id), aoi_dict)
+                b_windowed = True
             if r_a is None:
-                r_a = reader.read(provider.open_asset(after_obs.id))
+                r_a = _read_window_for_observation(reader, provider.open_asset(after_obs.id), aoi_dict)
+                a_windowed = True
+        except (EmptyWindowError, AoiTransformError) as e:
+            return False, 0.0, str(e)
         except (CorruptRasterError, FileNotFoundError, OSError):
             # Defer unreadable/corrupt file failures to the async pipeline job worker
             return True, None, None
@@ -73,9 +105,9 @@ def _evaluate_valid_pixel_fraction(
         return True, None, None
 
     try:
-        mask_b = _slice_window_valid_mask(r_b, aoi_dict)
-        mask_a = _slice_window_valid_mask(r_a, aoi_dict)
-    except EmptyWindowError as e:
+        mask_b = _window_valid_mask(r_b) if b_windowed else _slice_window_valid_mask(r_b, aoi_dict)
+        mask_a = _window_valid_mask(r_a) if a_windowed else _slice_window_valid_mask(r_a, aoi_dict)
+    except (EmptyWindowError, AoiTransformError) as e:
         return False, 0.0, str(e)
 
     if mask_b.size == 0 or mask_a.size == 0:
@@ -103,6 +135,7 @@ def validate_compatibility(
     before_raster: Optional[RasterData] = None,
     after_raster: Optional[RasterData] = None,
     provider: Optional[Any] = None,
+    rasters_pre_windowed: bool = False,
 ) -> ValidateResponse:
     """
     Evaluate observation pair compatibility according to PRD Section 8.3 rules.
@@ -414,6 +447,7 @@ def validate_compatibility(
             before_raster=before_raster,
             after_raster=after_raster,
             provider=provider,
+            rasters_pre_windowed=rasters_pre_windowed,
         )
         if window_err is not None:
             aoi_pass = False

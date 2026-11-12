@@ -134,8 +134,8 @@ def export_results(
         b_max = float(np.max(val_b)) if len(val_b) > 0 else 0.0
         if b_min == b_max:
             b_max = b_min + 1.0
-        before_color_scale = {"vmin": b_min, "vmax": b_max, "units": "dB", "colormap": "viridis"}
-        render_colorized_png(before_array, b_min, b_max, "viridis", before_png_path, nodata=nodata)
+        before_color_scale = {"vmin": b_min, "vmax": b_max, "units": "dB", "colormap": "gray"}
+        render_colorized_png(before_array, b_min, b_max, "gray", before_png_path, nodata=nodata)
 
     after_png_path = None
     after_color_scale = None
@@ -146,8 +146,8 @@ def export_results(
         a_max = float(np.max(val_a)) if len(val_a) > 0 else 0.0
         if a_min == a_max:
             a_max = a_min + 1.0
-        after_color_scale = {"vmin": a_min, "vmax": a_max, "units": "dB", "colormap": "viridis"}
-        render_colorized_png(after_array, a_min, a_max, "viridis", after_png_path, nodata=nodata)
+        after_color_scale = {"vmin": a_min, "vmax": a_max, "units": "dB", "colormap": "gray"}
+        render_colorized_png(after_array, a_min, a_max, "gray", after_png_path, nodata=nodata)
 
     # 5. Build and export statistics.json
     stats_path = out_dir / "statistics.json"

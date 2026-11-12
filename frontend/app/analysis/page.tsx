@@ -16,14 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { PipelineStagesGrid } from "@/components/analysis/PipelineStagesGrid";
+import { ValidationRulesTable } from "@/components/analysis/ValidationRulesTable";
 import {
   ArrowRight,
   CheckCircle2,
@@ -35,17 +29,6 @@ import {
   ShieldCheck,
   Activity,
 } from "lucide-react";
-
-const PIPELINE_STAGES = [
-  { id: "queued", label: "Queued in worker pool" },
-  { id: "validating", label: "Pre-execution validation" },
-  { id: "reading", label: "Reading raster data window" },
-  { id: "aligning", label: "Checking grid alignment & CRS" },
-  { id: "differencing", label: "SAR backscatter differencing (dB)" },
-  { id: "statistics", label: "Computing valid pixel statistics" },
-  { id: "exporting", label: "Exporting GeoTIFF & visual overlays" },
-  { id: "completed", label: "Completed" },
-] as const;
 
 function AnalysisContent() {
   const searchParams = useSearchParams();
@@ -327,51 +310,11 @@ function AnalysisContent() {
             )}
 
             {/* Discrete Stages Stepper (Speed Accelerator & R4: No Percentages!) */}
-            <div className="space-y-3 py-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Pipeline Stages
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {PIPELINE_STAGES.map((stage, idx) => {
-                  const currentStageIndex = PIPELINE_STAGES.findIndex((s) => s.id === currentStage);
-                  const isPassed = !isJobFailed && (isJobCompleted || idx < currentStageIndex);
-                  const isCurrent = !isJobCompleted && !isJobFailed && stage.id === currentStage;
-
-                  return (
-                    <div
-                      key={stage.id}
-                      className={`p-3 rounded-lg border flex items-start gap-2.5 transition-colors ${
-                        isPassed
-                          ? "bg-emerald-950/20 border-emerald-500/30 text-slate-200"
-                          : isCurrent
-                          ? "bg-blue-950/40 border-blue-500/60 text-white ring-1 ring-blue-500/30"
-                          : "bg-slate-950/40 border-slate-800/80 text-slate-500"
-                      }`}
-                    >
-                      <div className="mt-0.5 shrink-0">
-                        {isPassed ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        ) : isCurrent ? (
-                          <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                        ) : (
-                          <span className="w-4 h-4 rounded-full border border-slate-700 flex items-center justify-center text-[10px] font-mono">
-                            {idx + 1}
-                          </span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-xs font-semibold block capitalize">
-                          {stage.id}
-                        </span>
-                        <span className="text-[11px] leading-tight block text-slate-400 mt-0.5">
-                          {stage.label}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <PipelineStagesGrid
+              currentStage={currentStage}
+              isJobCompleted={isJobCompleted}
+              isJobFailed={isJobFailed}
+            />
 
             {/* Action Bar */}
             <div className="flex items-center justify-between pt-2 border-t border-slate-800">
@@ -475,55 +418,7 @@ function AnalysisContent() {
                   )}
 
                   {/* Rules Table */}
-                  <div className="border border-slate-800 rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-10 text-center">Status</TableHead>
-                          <TableHead className="w-32">Rule ID</TableHead>
-                          <TableHead className="w-24">Severity</TableHead>
-                          <TableHead>Check Description & Message</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {validationData?.rules?.map((rule) => {
-                          const isPassed = rule.passed;
-                          const isWarning = rule.severity === "warning";
-
-                          return (
-                            <TableRow key={rule.id}>
-                              <TableCell className="text-center">
-                                {isPassed ? (
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-400 inline-block" />
-                                ) : isWarning ? (
-                                  <AlertTriangle className="w-4 h-4 text-amber-400 inline-block" />
-                                ) : (
-                                  <XCircle className="w-4 h-4 text-red-400 inline-block" />
-                                )}
-                              </TableCell>
-                              <TableCell className="font-mono text-xs font-semibold text-slate-200">
-                                {rule.id}
-                              </TableCell>
-                              <TableCell>
-                                {isWarning ? (
-                                  <Badge variant="warning" className="text-[10px]">
-                                    WARNING
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="destructive" className="text-[10px]">
-                                    ERROR
-                                  </Badge>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-xs text-slate-300">
-                                {rule.message}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <ValidationRulesTable rules={validationData?.rules} />
                 </>
               )}
 

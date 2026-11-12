@@ -65,19 +65,19 @@ classDiagram
 
 ```mermaid
 flowchart LR
-  A["Open 2 GeoTIFF assets<br/>GeoTIFFReader.read()"] --> V["validate_compatibility()<br/>11 rules V-SAME-ID..V-VALID"]
+  A["Inspect GeoTIFF headers<br/>GeoTIFFReader.read_metadata()"] --> V["validate_compatibility()<br/>11 rules V-SAME-ID..V-VALID"]
   V -- fail --> VI["IncompatiblePipelineError<br/>(INCOMPATIBLE_OBSERVATIONS)"]
-  V -- pass --> B["crop_to_aoi()<br/>AOI window + nodata -> NaN"]
+  V -- pass --> B["compute_aoi_window() + read(..., window=...)<br/>CRS-aware AOI reprojection + nodata -> NaN"]
   B --> C["align()<br/>CRS, resolution, integer grid check"]
   C -- mismatch --> E["AlignmentMismatchError<br/>(ALIGNMENT_MISMATCH)"]
   C -- aligned --> F["difference_db()<br/>D = after - before on shared valid mask"]
   F --> G["compute_stats()<br/>counts, mean, median, min, max, std"]
-  G --> H["export_results()<br/>difference.tif, JSONs, colorized PNGs"]
+  G --> H["export_results()<br/>difference.tif, JSONs, gray/coolwarm PNGs"]
 ```
 
 ## 5. User Workflow & Frontend Architecture
 
-- Five App Router pages under `frontend/app/`:
+- Five App Router pages under `frontend/app/` supported by modular map and feature components (`frontend/components/map/`, `frontend/components/analysis/{PipelineStagesGrid,ValidationRulesTable}.tsx`, `frontend/components/results/{ResultsStatsCard,ResultsExportsCard}.tsx`):
   - `/dashboard`: API health status (`GET /api/health`), Study Area Summary (from `sessionStorage` AOI), and Recent Analyses hydrated from `localStorage` job IDs via `GET /api/analysis/{job_id}` (preserving 8 endpoints with inline error + Retry).
   - `/explore`: Interactive MapLibre GL + TerraDraw polygon/rectangle AOI selection, `"Use demo area"` action (syncing `custom-aoi-source` and fitting bounds immediately on `style.load`), client-side metrics (`lib/geo.ts`), and map style failure Alert + Retry.
   - `/observations`: Provider search (`POST /api/observations/search`), metadata table (`"Not provided"` fallback), and 2-observation selection with automatic chronological ordering.

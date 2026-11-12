@@ -12,4 +12,7 @@ Format: Date | Decision | Reason
 - 2026-11-12 | Dashboard derives recent analyses from client-side stored job IDs hydrated via `GET /api/analysis/{job_id}` | Preserves the strict 8-endpoint API contract without adding a ninth list endpoint while showing live server status.
 - 2026-11-12 | Pinned `eslint@8.57.1` and `eslint-config-next@14.2.18` with `.eslintrc.json` extending `next/core-web-vitals` | Enables non-interactive `npm run lint` matching Next.js 14.2.18 while pinning exact package versions per Rule R9.
 - 2026-11-12 | `backend/Dockerfile` uses `python:3.13-slim` and installs `libexpat1` | Matches pinned `backend/requirements.txt` (`contourpy==1.4.0` requires `>=3.12`) and provides `libexpat.so.1` needed by `rasterio` on Debian slim.
+- 2026-11-12 | Transform GeoJSON AOIs into each raster's native CRS via `rasterio.warp.transform_geom` before pixel window calculation | Supports projected GeoTIFFs (e.g. `EPSG:32643`) without resampling source pixels or assuming every asset uses `EPSG:4326`.
+- 2026-11-12 | Use single-hue `gray` colormap for `before.png`/`after.png` and reserve diverging `coolwarm` for `difference.png`, matching the Results legend gradient | Avoids false perceptual breakpoints on monotone SAR backscatter layers while highlighting positive/negative dB changes on the difference layer.
+- 2026-11-12 | Extract focused subcomponents under `frontend/components/{analysis,results}/` and remove duplicate root prompt copy | Improves page maintainability without over-fragmenting smaller pages and eliminates duplicate PRD documentation.
 

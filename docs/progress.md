@@ -9,7 +9,7 @@
 | M3: Parallel Lanes A, B, C | VERIFIED | `make test` (50 pytest passed, 13 Vitest passed) | Processing pipeline, Providers & JobManager, 5-page Next.js frontend |
 | M4: Integration | VERIFIED | `cd frontend && npm run test:e2e`, `docs/evidence/m4_workflow_result.png` | Full workflow in real Chrome via Playwright (`browser` subagent blocked by missing `DevToolsActivePort`) |
 | M5: Hardening | VERIFIED | `npm run test:e2e` (1280px, 820px, 390px), `test_providers.py`, `test_job_fails_on_corrupt_raster` | Path traversal guards, failed-job API test, 3-width responsive E2E pass |
-| M6: Deploy | PARTIAL | `make build`, `backend/Dockerfile`, `frontend/vercel.json`, `README.md`, app bundle grep | Local build & bundle secret check VERIFIED; remote cloud URL deployment PLANNED |
+| M6: Deploy | PARTIAL | `make build`, `docker build -f backend/Dockerfile`, `frontend/vercel.json`, `README.md` | Local Docker build/health/E2E & Next.js build VERIFIED; remote cloud URL deployment PLANNED |
 | M7: Resource Readiness | VERIFIED | Grep check on `nisar-integration-checklist.md`, `nisar-metadata-mapping.md`, `nisar_provider.py` | Questions-only checklist & empty mapping template; zero invented NISAR facts |
 
 ## Functional Requirements Status
@@ -96,10 +96,12 @@
 | **F-11** (Unused `sonner`, `DEMO_BBOX`, unused imports/exports) | **VERIFIED** | Commit `ac684bd`. Uninstalled `sonner`, removed `DEMO_BBOX`, removed `clearRecentJobs`, and cleaned all unused locals/imports. Pre-fix `tsc --noEmit --noUnusedLocals` (`12 errors in 3 files`) and Python AST scan (`8` files with unused imports) -> Post-fix grep for `sonner\|DEMO_BBOX\|clearRecentJobs` (`0` matches in `frontend/` and `backend/`), `tsc --noUnusedLocals` (`0` errors), Python AST (`PYTHON_AST_CLEAN`), `npm run lint` (`✔ No ESLint warnings or errors`), `make test` (`69 passed` pytest; `8 files / 20 tests passed` Vitest), `make build` (`9/9` routes), `npm run test:e2e` (`4 passed (8.8s)`). |
 | **F-10** (`SyntheticBanner` gating on `health.synthetic_mode` & `job.synthetic`) | **VERIFIED** | Commit `ba5ad3e`. Pre-fix `vitest run tests/synthetic_banner.test.tsx` (`1 failed \| 2 passed`, banner rendered when `synthetic_mode=false`) -> Post-fix `synthetic_banner.test.tsx` (`3/3` pass), `npm run lint` (`✔ No ESLint warnings or errors`), `make test` (`69 passed` pytest; `9 files / 23 tests passed` Vitest), `make build` (`9/9` routes), `npm run test:e2e` (`4 passed (11.2s)`). |
 
-### Deferred
+### Final Phase A Resolution & Verification (`F-12`, `F-13`, `F-14`, Docker)
 
-- **F-12** (**PARTIAL** / Deferred): Requires `M`-effort edits to scientific processing and validation modules (`pipeline.py`, `export.py`, `validation.py`), excluded by the `S`-effort and non-scientific boundary.
-- **F-13** (**PARTIAL** / Deferred): Extracting `components/{observations,analysis,results}/` exceeds `S`-effort refactoring across working pages, and the extra root prompt file is the active user-opened prompt document.
-- **F-14** (**PARTIAL** / Deferred): Requires `M`-effort test harness refactoring (`explore.test.tsx` unmocking and provider test restructuring), deferred per the `S`-effort threshold.
-- **Docker / Remote Deployment** (**PARTIAL**): Intentionally untouched per scope (`Docker build and deployed URL: NOT VERIFIED, run on a machine with Docker`).
+- **F-12** (**VERIFIED**): Implemented CRS-aware AOI reprojection (`rasterio.warp.transform_geom`), header-only `GeoTIFFReader.read_metadata()` + windowed `read(..., window=...)` across `pipeline.py` & `validation.py`, single-hue `gray` PNGs for `before`/`after` synced with `ResultsPage` legend bar, and distinct `PASS`/`WARNING`/`ERROR` validation badges (`test_preprocessing.py`, `test_reader.py`, `test_export.py`, `analysis.test.tsx`).
+- **F-13** (**VERIFIED**): Extracted `frontend/components/analysis/{PipelineStagesGrid,ValidationRulesTable}.tsx` and `frontend/components/results/{ResultsStatsCard,ResultsExportsCard}.tsx`; removed duplicate root prompt file `TerraWatch AI — Antigravity Master Prompt & PRD.md`.
+- **F-14** (**VERIFIED**): Unmocked `AoiDrawMap` in `frontend/tests/explore.test.tsx` (mocking only `maplibre-gl` & `terra-draw`), expanded `observations.test.tsx`, and strengthened `backend/tests/api/test_providers.py` (`LocalProvider`, `MockProvider`, `NisarProvider`, `403 INVALID_REQUEST` static traversal guard).
+- **Docker Container Verification** (**VERIFIED**): `docker build -f backend/Dockerfile -t terrawatch-backend .` built cleanly; live container responded `200 OK` on `/api/health` and passed `npx playwright test e2e/workflow.spec.ts` (`3 passed (14.8s)`).
+- **Clean-Directory Reproducibility** (**VERIFIED**): Isolated `/tmp/terrawatch-verify` copy of working tree without `.venv`/`node_modules`/`.next` passed `make setup`, `make fixtures`, `make test` (`77 passed` pytest, `9 files / 33 passed` Vitest), and `make build`.
+- **Remaining Scope**: Remote cloud deployment (`M6` remote URL) and optional `FR-20` GeoJSON change polygons remain `PLANNED`; real NISAR provider (`FR-21`) remains `BLOCKED` pending official NASA/ISRO resources.
 

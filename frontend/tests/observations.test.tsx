@@ -104,4 +104,46 @@ describe('ObservationsPage', () => {
 
     expect(pushMock).toHaveBeenCalledWith('/analysis?before=obs_1&after=obs_2')
   })
+
+  it('shows No Area of Interest prompt when sessionStorage has no AOI', () => {
+    sessionStorage.clear()
+    render(
+      <Providers>
+        <ObservationsPage />
+      </Providers>
+    )
+
+    expect(screen.getByText('No Area of Interest Selected')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /go to explore/i })).toBeInTheDocument()
+  })
+
+  it('renders error alert with Retry and empty catalog state cleanly', async () => {
+    vi.mocked(apiClient.searchObservations).mockRejectedValue(new Error('Provider error'))
+
+    render(
+      <Providers>
+        <ObservationsPage />
+      </Providers>
+    )
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('Error querying observations')).toBeInTheDocument()
+      },
+      { timeout: 4000 }
+    )
+
+    vi.mocked(apiClient.searchObservations).mockResolvedValueOnce({
+      observations: [],
+      warnings: ['Skipped 1 malformed local sidecar'],
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('No observations found')).toBeInTheDocument()
+      expect(screen.getByText('Catalog Warnings')).toBeInTheDocument()
+      expect(screen.getByText(/Skipped 1 malformed local sidecar/)).toBeInTheDocument()
+    })
+  })
 })

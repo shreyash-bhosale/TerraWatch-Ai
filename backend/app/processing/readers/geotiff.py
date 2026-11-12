@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 import numpy as np
 import rasterio
 from rasterio.windows import Window
@@ -15,6 +15,36 @@ class GeoTIFFReader(BaseReader):
     """
     Reader for GeoTIFF raster files using rasterio.
     """
+
+    def read_metadata(self, path: Path) -> Dict[str, Any]:
+        """Read spatial and tag metadata from a GeoTIFF header without loading pixel data."""
+        path = Path(path)
+        if not path.is_file():
+            raise FileNotFoundError(f"Raster file not found: {path}")
+
+        try:
+            with rasterio.open(path) as src:
+                transform = src.transform
+                bounds = (
+                    float(src.bounds.left),
+                    float(src.bounds.bottom),
+                    float(src.bounds.right),
+                    float(src.bounds.top),
+                )
+                return {
+                    "width": int(src.width),
+                    "height": int(src.height),
+                    "transform": transform,
+                    "crs": src.crs,
+                    "bounds": bounds,
+                    "nodata": float(src.nodata) if src.nodata is not None else -9999.0,
+                    "resolution": (float(abs(transform.a)), float(abs(transform.e))),
+                    "units": src.tags().get("UNITS", "dB"),
+                }
+        except (RasterioIOError, Exception) as e:
+            if isinstance(e, FileNotFoundError):
+                raise
+            raise CorruptRasterError(f"Corrupt or unreadable raster at {path}: {str(e)}") from e
 
     def read(self, path: Path, window: Optional[Window] = None) -> RasterData:
         path = Path(path)

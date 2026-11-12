@@ -5,10 +5,13 @@ from app.processing.metadata import find_sidecar, load_sidecar_metadata, normali
 from app.processing.preprocessing import (
     mask_nodata_to_nan,
     get_valid_mask,
+    reproject_aoi_geometry,
     compute_aoi_window,
+    finalize_valid_raster,
     crop_to_aoi,
     EmptyWindowError,
     NoValidPixelsError,
+    AoiTransformError,
 )
 from app.processing.alignment import check_alignment, align, AlignmentMismatchError
 from app.processing.change_detection import difference_db
@@ -26,10 +29,13 @@ __all__ = [
     "normalize_metadata",
     "mask_nodata_to_nan",
     "get_valid_mask",
+    "reproject_aoi_geometry",
     "compute_aoi_window",
+    "finalize_valid_raster",
     "crop_to_aoi",
     "EmptyWindowError",
     "NoValidPixelsError",
+    "AoiTransformError",
     "check_alignment",
     "align",
     "AlignmentMismatchError",
