@@ -85,3 +85,21 @@
 - Added `frontend/.eslintrc.json` (`next/core-web-vitals`) and pinned `eslint@8.57.1` + `eslint-config-next@14.2.18`:
   - `cd frontend && npm run lint`: `✔ No ESLint warnings or errors`.
 - Docker build and deployed URL: NOT VERIFIED, run on a machine with Docker.
+
+---
+
+## Post-reaudit fixes
+
+| Finding | Status | Proof |
+| --- | --- | --- |
+| **F-05** (`results/page.tsx` `statusError` Retry & last-known state) | **VERIFIED** | Commit `a74b076`. Pre-fix: `vitest run tests/results.test.tsx` (`1 failed \| 4 passed`, missing `Retry`) and Playwright `e2e/results-retry.spec.ts` (`1 failed`, `getByRole('button', { name: /retry/i })` not found). Post-fix: `results.test.tsx` (`5/5` pass including status-refresh preservation test), `npm run lint` (`✔ No ESLint warnings or errors`), `make test` (`69 passed` pytest; `8 files / 20 tests passed` Vitest), `make build` (`9/9` routes), and `cd frontend && npm run test:e2e` (`4 passed (8.9s)` including real backend stop/restart recovery). |
+| **F-11** (Unused `sonner`, `DEMO_BBOX`, unused imports/exports) | **VERIFIED** | Commit `ac684bd`. Uninstalled `sonner`, removed `DEMO_BBOX`, removed `clearRecentJobs`, and cleaned all unused locals/imports. Pre-fix `tsc --noEmit --noUnusedLocals` (`12 errors in 3 files`) and Python AST scan (`8` files with unused imports) -> Post-fix grep for `sonner\|DEMO_BBOX\|clearRecentJobs` (`0` matches in `frontend/` and `backend/`), `tsc --noUnusedLocals` (`0` errors), Python AST (`PYTHON_AST_CLEAN`), `npm run lint` (`✔ No ESLint warnings or errors`), `make test` (`69 passed` pytest; `8 files / 20 tests passed` Vitest), `make build` (`9/9` routes), `npm run test:e2e` (`4 passed (8.8s)`). |
+| **F-10** (`SyntheticBanner` gating on `health.synthetic_mode` & `job.synthetic`) | **VERIFIED** | Commit `ba5ad3e`. Pre-fix `vitest run tests/synthetic_banner.test.tsx` (`1 failed \| 2 passed`, banner rendered when `synthetic_mode=false`) -> Post-fix `synthetic_banner.test.tsx` (`3/3` pass), `npm run lint` (`✔ No ESLint warnings or errors`), `make test` (`69 passed` pytest; `9 files / 23 tests passed` Vitest), `make build` (`9/9` routes), `npm run test:e2e` (`4 passed (11.2s)`). |
+
+### Deferred
+
+- **F-12** (**PARTIAL** / Deferred): Requires `M`-effort edits to scientific processing and validation modules (`pipeline.py`, `export.py`, `validation.py`), excluded by the `S`-effort and non-scientific boundary.
+- **F-13** (**PARTIAL** / Deferred): Extracting `components/{observations,analysis,results}/` exceeds `S`-effort refactoring across working pages, and the extra root prompt file is the active user-opened prompt document.
+- **F-14** (**PARTIAL** / Deferred): Requires `M`-effort test harness refactoring (`explore.test.tsx` unmocking and provider test restructuring), deferred per the `S`-effort threshold.
+- **Docker / Remote Deployment** (**PARTIAL**): Intentionally untouched per scope (`Docker build and deployed URL: NOT VERIFIED, run on a machine with Docker`).
+
