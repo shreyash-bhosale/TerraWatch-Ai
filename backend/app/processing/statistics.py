@@ -49,5 +49,6 @@ def compute_stats(diff_array: np.ndarray, nodata: float = -9999.0) -> Dict[str, 
         "median": float(np.median(valid_vals)),
         "min": float(np.min(valid_vals)),
         "max": float(np.max(valid_vals)),
+        # Population standard deviation (ddof=0)
         "std": float(np.std(valid_vals)),
     }

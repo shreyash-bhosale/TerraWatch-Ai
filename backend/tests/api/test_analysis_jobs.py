@@ -192,3 +192,77 @@ def test_job_fails_on_corrupt_raster(tmp_path, monkeypatch):
     # Results endpoint must return 409 JOB_NOT_COMPLETED
     res_resp = client.get(f"/api/analysis/{job_id}/results")
     assert res_resp.status_code == 409
+
+
+def _run_job_to_completion(before_id: str, after_id: str, aoi: dict) -> dict:
+    resp = client.post(
+        "/api/analysis",
+        json={"before_id": before_id, "after_id": after_id, "aoi": aoi},
+    )
+    assert resp.status_code == 202
+    job_id = resp.json()["job_id"]
+
+    final_status = None
+    for _ in range(50):
+        poll = client.get(f"/api/analysis/{job_id}").json()
+        if poll["status"] in ("completed", "failed"):
+            final_status = poll
+            break
+        time.sleep(0.1)
+
+    assert final_status is not None, "Job timed out"
+    assert final_status["status"] == "completed", final_status.get("error")
+
+    res_resp = client.get(f"/api/analysis/{job_id}/results")
+    assert res_resp.status_code == 200
+    return res_resp.json()
+
+
+def test_corner_aoi_cropping_exact_stats():
+    # Top-left corner 6x31 window (rows 0..5, cols 0..30) covers the 4x4 nodata block in syn_before
+    # while staying completely outside the 20..39 anomaly block in syn_after.
+    corner_aoi = {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [73.800, 18.554],
+                [73.831, 18.554],
+                [73.831, 18.560],
+                [73.800, 18.560],
+                [73.800, 18.554],
+            ]
+        ],
+    }
+
+    res = _run_job_to_completion("syn_before", "syn_after", corner_aoi)
+    stats = res["statistics"]
+    assert stats["total_pixel_count"] == 186
+    assert stats["valid_pixel_count"] == 170
+    assert stats["invalid_pixel_count"] == 16
+    assert stats["mean"] == pytest.approx(0.0, abs=1e-6)
+    assert stats["min"] == pytest.approx(0.0, abs=1e-6)
+    assert stats["max"] == pytest.approx(0.0, abs=1e-6)
+
+
+def test_full_demo_aoi_matches_expected_stats():
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[3]
+    aoi = json.loads((repo_root / "data" / "synthetic" / "aoi.geojson").read_text())
+    expected = json.loads((repo_root / "data" / "synthetic" / "expected_stats.json").read_text())
+
+    res = _run_job_to_completion("syn_before", "syn_after", aoi)
+    stats = res["statistics"]
+    assert stats["valid_pixel_count"] == expected["valid_pixel_count"]
+    assert stats["invalid_pixel_count"] == expected["invalid_pixel_count"]
+    assert stats["total_pixel_count"] == expected["total_pixel_count"]
+    assert stats["mean"] == pytest.approx(expected["mean"], rel=1e-6)
+    assert stats["median"] == pytest.approx(expected["median"], rel=1e-6)
+    assert stats["min"] == pytest.approx(expected["min"], rel=1e-6)
+    assert stats["max"] == pytest.approx(expected["max"], rel=1e-6)
+    # Note: std is population standard deviation (ddof=0) matching np.std default.
+    assert stats["std"] == pytest.approx(expected["std"], rel=1e-6)
+    assert res["metadata"]["color_scales"]["difference"]["units"] == expected["units"]
+    assert expected["label"] in res["metadata"]["label"]
+    assert any(expected["label"] in lim for lim in res["limitations"])
+
