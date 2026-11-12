@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { apiClient } from "@/lib/api";
@@ -22,26 +22,72 @@ function BannerContent() {
 }
 
 function SyntheticBannerDynamic() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const jobId = searchParams.get("job");
+  const isResultsPage = pathname?.startsWith("/results") ?? false;
 
-  const { data: health } = useQuery({
+  const {
+    data: health,
+    isSuccess: healthSuccess,
+    isError: healthError,
+  } = useQuery({
     queryKey: ["health"],
     queryFn: () => apiClient.getHealth(),
   });
 
-  const { data: jobStatus } = useQuery({
+  const healthExplicitlyNonSynthetic =
+    healthSuccess && !healthError && health?.synthetic_mode === false;
+
+  const {
+    data: jobStatus,
+    isSuccess: jobSuccess,
+    isError: jobError,
+  } = useQuery({
     queryKey: ["analysis-status-for-banner", jobId],
     queryFn: () => {
       if (!jobId) throw new Error("No job ID");
       return apiClient.getAnalysisStatus(jobId);
     },
-    enabled: Boolean(jobId) && health?.synthetic_mode === false,
+    enabled: Boolean(jobId) && healthExplicitlyNonSynthetic,
     retry: false,
   });
 
-  if (!health?.synthetic_mode && !jobStatus?.synthetic) {
-    return null;
+  const jobExplicitlyNonSynthetic =
+    jobSuccess && !jobError && jobStatus?.synthetic === false;
+
+  const shouldCheckResults =
+    isResultsPage &&
+    Boolean(jobId) &&
+    healthExplicitlyNonSynthetic &&
+    jobExplicitlyNonSynthetic &&
+    jobStatus?.status === "completed";
+
+  const {
+    data: jobResults,
+    isSuccess: resultsSuccess,
+    isError: resultsError,
+  } = useQuery({
+    queryKey: ["analysis-results-for-banner", jobId],
+    queryFn: () => {
+      if (!jobId) throw new Error("No job ID");
+      return apiClient.getAnalysisResults(jobId);
+    },
+    enabled: shouldCheckResults,
+    retry: false,
+  });
+
+  if (healthExplicitlyNonSynthetic) {
+    if (isResultsPage) {
+      const resultsOk =
+        jobStatus?.status !== "completed" ||
+        (resultsSuccess && !resultsError && jobResults?.synthetic === false);
+      if (jobId && jobExplicitlyNonSynthetic && resultsOk) {
+        return null;
+      }
+    } else if (!jobId || jobExplicitlyNonSynthetic) {
+      return null;
+    }
   }
 
   return <BannerContent />;
@@ -56,7 +102,7 @@ export function SyntheticBanner({ show }: { show?: boolean }) {
   }
 
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<BannerContent />}>
       <SyntheticBannerDynamic />
     </Suspense>
   );
