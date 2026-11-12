@@ -37,6 +37,7 @@ function ResultsContent() {
     data: jobStatus,
     isLoading: isLoadingStatus,
     error: statusError,
+    refetch: refetchStatus,
   } = useQuery({
     queryKey: ["analysis-status-for-results", jobId],
     queryFn: () => {
@@ -108,26 +109,35 @@ function ResultsContent() {
     );
   }
 
-  if (statusError) {
-    const errMsg = isApiError(statusError)
-      ? `${statusError.error.code}: ${statusError.error.message}`
-      : "Unable to locate analysis job.";
+  const statusErrorBanner = statusError ? (
+    <Alert variant="destructive">
+      <XCircle className="h-4 w-4" />
+      <AlertTitle>Results Not Available</AlertTitle>
+      <AlertDescription className="mt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <span>
+          {isApiError(statusError)
+            ? `${statusError.error.code}: ${statusError.error.message}`
+            : "Unable to load analysis job status. Last known state is preserved if available."}
+        </span>
+        <div className="flex gap-2 shrink-0">
+          <Button type="button" variant="outline" size="sm" onClick={() => refetchStatus()}>
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+            Retry
+          </Button>
+          <Link href="/dashboard">
+            <Button variant="outline" size="sm">
+              Return to Dashboard
+            </Button>
+          </Link>
+        </div>
+      </AlertDescription>
+    </Alert>
+  ) : null;
+
+  if (statusError && !jobStatus) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col gap-6">
-        <Alert variant="destructive">
-          <XCircle className="h-4 w-4" />
-          <AlertTitle>Results Not Available</AlertTitle>
-          <AlertDescription className="mt-1 flex flex-col gap-3">
-            <span>{errMsg}</span>
-            <div className="flex gap-2">
-              <Link href="/dashboard">
-                <Button variant="outline" size="sm">
-                  Return to Dashboard
-                </Button>
-              </Link>
-            </div>
-          </AlertDescription>
-        </Alert>
+        {statusErrorBanner}
       </div>
     );
   }
@@ -135,6 +145,7 @@ function ResultsContent() {
   if (jobStatus && (jobStatus.status === "queued" || jobStatus.status === "running")) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col gap-6">
+        {statusErrorBanner}
         <Alert className="border-blue-500/30 bg-blue-500/10 text-blue-200">
           <Clock className="h-4 w-4 text-blue-400" />
           <AlertTitle>Analysis Still In Progress</AlertTitle>
@@ -155,6 +166,7 @@ function ResultsContent() {
   if (jobStatus?.status === "failed") {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col gap-6">
+        {statusErrorBanner}
         <Alert variant="destructive">
           <XCircle className="h-4 w-4" />
           <AlertTitle>Analysis Job Failed</AlertTitle>
@@ -182,6 +194,7 @@ function ResultsContent() {
   if (resultsError || !results) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col gap-6">
+        {statusErrorBanner}
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Results Not Available</AlertTitle>
@@ -233,6 +246,7 @@ function ResultsContent() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col gap-6">
+      {statusErrorBanner}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-5">
         <div>
