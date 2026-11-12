@@ -1,22 +1,27 @@
+import logging
 import shutil
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 from rasterio.crs import CRS
+from rasterio.errors import RasterioError
 from rasterio.warp import transform_bounds
 
-from app.processing.readers.geotiff import GeoTIFFReader
+from app.processing.alignment import align
+from app.processing.change_detection import difference_db
+from app.processing.export import export_results
 from app.processing.metadata import find_sidecar, load_sidecar_metadata
 from app.processing.preprocessing import (
     compute_aoi_window,
     finalize_valid_raster,
 )
-from app.processing.alignment import align
-from app.processing.change_detection import difference_db
+from app.processing.readers.geotiff import GeoTIFFReader
 from app.processing.statistics import compute_stats
-from app.processing.export import export_results
 from app.processing.validation import validate_compatibility
 from app.schemas.observation import Observation
+
+logger = logging.getLogger(__name__)
 
 
 class IncompatiblePipelineError(ValueError):
@@ -30,14 +35,14 @@ class IncompatiblePipelineError(ValueError):
 def _bounds_to_wgs84_polygon(
     bounds: tuple[float, float, float, float],
     crs: Any = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     w, s, e, n = bounds
     if crs is not None:
         try:
             if CRS.from_user_input(crs) != CRS.from_epsg(4326):
                 w, s, e, n = transform_bounds(crs, "EPSG:4326", w, s, e, n)
-        except Exception:
-            pass
+        except (RasterioError, ValueError, TypeError) as exc:
+            logger.warning("Failed to reproject raster bounds from %r to EPSG:4326: %s", crs, exc)
     return {
         "type": "Polygon",
         "coordinates": [[[float(w), float(s)], [float(e), float(s)], [float(e), float(n)], [float(w), float(n)], [float(w), float(s)]]],
@@ -45,8 +50,8 @@ def _bounds_to_wgs84_polygon(
 
 
 def _build_observation(
-    meta: Optional[Dict[str, Any]],
-    header: Dict[str, Any],
+    meta: dict[str, Any] | None,
+    header: dict[str, Any],
     path: Path,
     default_date: str,
 ) -> Observation:
@@ -71,10 +76,10 @@ def _build_observation(
 def run_pipeline(
     before_path: Path,
     after_path: Path,
-    aoi_geojson: Optional[Dict[str, Any]],
+    aoi_geojson: dict[str, Any] | None,
     output_dir: Path,
-    stage_callback: Optional[Callable[[str], None]] = None,
-) -> Dict[str, Any]:
+    stage_callback: Callable[[str], None] | None = None,
+) -> dict[str, Any]:
     """
     Orchestrate the raster processing pipeline through deterministic stages:
     reading -> aligning -> differencing -> statistics -> exporting -> completed.

@@ -6,9 +6,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.config import settings
-from app.api.observations import router as observations_router
 from app.api.analysis import router as analysis_router
+from app.api.observations import router as observations_router
+from app.config import settings
 
 app = FastAPI(
     title="TerraWatch AI API",
@@ -138,7 +138,7 @@ def get_health(response: Response):
         test_file.touch()
         test_file.unlink()
         data_dir_ok = True
-    except Exception:
+    except OSError:
         data_dir_ok = False
 
     # Check fixtures presence

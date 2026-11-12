@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
+
 from rasterio.windows import Window
+
 from app.processing.raster_data import RasterData
+
 
 class BaseReader(ABC):
     """
@@ -10,7 +12,7 @@ class BaseReader(ABC):
     """
 
     @abstractmethod
-    def read(self, path: Path, window: Optional[Window] = None) -> RasterData:
+    def read(self, path: Path, window: Window | None = None) -> RasterData:
         """
         Read a raster from disk, optionally within a bounding window.
 
@@ -21,4 +23,3 @@ class BaseReader(ABC):
         Returns:
             RasterData containing the extracted 2D float32 array and spatial metadata.
         """
-        pass

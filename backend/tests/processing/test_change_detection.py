@@ -1,11 +1,14 @@
 from pathlib import Path
+
 import numpy as np
 import pytest
 from rasterio.crs import CRS
 from rasterio.transform import from_origin
-from app.processing.readers.geotiff import GeoTIFFReader
+
 from app.processing.change_detection import difference_db
 from app.processing.raster_data import RasterData
+from app.processing.readers.geotiff import GeoTIFFReader
+
 
 def test_difference_db_on_synthetic_fixtures():
     fixtures_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "synthetic"

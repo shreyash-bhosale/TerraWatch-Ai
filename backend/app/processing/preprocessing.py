@@ -1,4 +1,5 @@
-from typing import Any, Dict, Tuple
+from typing import Any
+
 import numpy as np
 import rasterio
 from rasterio.crs import CRS
@@ -11,17 +12,14 @@ from app.processing.raster_data import RasterData
 
 class EmptyWindowError(ValueError):
     """Raised when the AOI does not intersect the raster or has empty intersection."""
-    pass
 
 
 class NoValidPixelsError(ValueError):
     """Raised when an extracted raster window contains no valid pixels."""
-    pass
 
 
 class AoiTransformError(ValueError):
     """Raised when an AOI geometry is invalid or cannot be transformed to the raster CRS."""
-    pass
 
 
 def mask_nodata_to_nan(array: np.ndarray, nodata: float = -9999.0) -> np.ndarray:
@@ -43,10 +41,10 @@ def get_valid_mask(array: np.ndarray, nodata: float = -9999.0) -> np.ndarray:
 
 
 def reproject_aoi_geometry(
-    aoi_geometry: Dict[str, Any],
+    aoi_geometry: dict[str, Any],
     raster_crs: Any,
     aoi_crs: str = "EPSG:4326",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Validate an AOI GeoJSON geometry and transform it into the target raster CRS.
     """
@@ -87,8 +85,8 @@ def reproject_aoi_geometry(
 
 
 def compute_aoi_window(
-    aoi_geometry: Dict[str, Any],
-    raster_bounds: Tuple[float, float, float, float],
+    aoi_geometry: dict[str, Any],
+    raster_bounds: tuple[float, float, float, float],
     transform: rasterio.Affine,
     width: int,
     height: int,
@@ -162,7 +160,7 @@ def finalize_valid_raster(raster: RasterData) -> RasterData:
 
 def crop_to_aoi(
     raster: RasterData,
-    aoi_geometry: Dict[str, Any],
+    aoi_geometry: dict[str, Any],
     aoi_crs: str = "EPSG:4326",
 ) -> RasterData:
     """

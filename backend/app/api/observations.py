@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query, status
 from fastapi.responses import JSONResponse
 
+from app.api.helpers import call_provider, fetch_observation, resolve_provider
 from app.providers.registry import get_provider
 from app.schemas.common import ErrorEnvelope
 from app.schemas.observation import (
@@ -33,43 +34,21 @@ def search_observations(request: ObservationSearchRequest):
             content={"error": {"code": "INVALID_GEOMETRY", "message": str(e), "details": None}},
         )
 
-    # Get provider
-    try:
-        provider = get_provider()
-    except NotImplementedError as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
-        )
+    provider = resolve_provider(get_provider)
+    if isinstance(provider, JSONResponse):
+        return provider
 
-    # Execute search
-    try:
-        observations, warnings = provider.search(
+    result = call_provider(
+        lambda: provider.search(
             aoi=request.aoi,
             start_date=request.start_date,
             end_date=request.end_date,
         )
-        return ObservationSearchResponse(observations=observations, warnings=warnings)
-    except NotImplementedError as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
-        )
-    except PermissionError:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Path traversal detected", "details": None}},
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
-        )
+    )
+    if isinstance(result, JSONResponse):
+        return result
+    observations, warnings = result
+    return ObservationSearchResponse(observations=observations, warnings=warnings)
 
 
 @router.get(
@@ -84,37 +63,15 @@ def list_observations(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
-    try:
-        provider = get_provider()
-    except NotImplementedError as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
-        )
+    provider = resolve_provider(get_provider)
+    if isinstance(provider, JSONResponse):
+        return provider
 
-    try:
-        observations, total = provider.list(limit=limit, offset=offset)
-        return ObservationListResponse(observations=observations, total=total)
-    except NotImplementedError as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
-        )
-    except PermissionError:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Path traversal detected", "details": None}},
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
-        )
+    result = call_provider(lambda: provider.list(limit=limit, offset=offset))
+    if isinstance(result, JSONResponse):
+        return result
+    observations, total = result
+    return ObservationListResponse(observations=observations, total=total)
 
 
 @router.get(
@@ -128,38 +85,8 @@ def list_observations(
     },
 )
 def get_observation(id: str):
-    try:
-        provider = get_provider()
-    except NotImplementedError as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
-        )
+    provider = resolve_provider(get_provider)
+    if isinstance(provider, JSONResponse):
+        return provider
 
-    try:
-        return provider.get(id)
-    except KeyError:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"error": {"code": "OBSERVATION_NOT_FOUND", "message": f"Observation '{id}' not found", "details": None}},
-        )
-    except NotImplementedError as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
-        )
-    except PermissionError:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Invalid observation identifier", "details": None}},
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
-        )
+    return fetch_observation(provider, id)

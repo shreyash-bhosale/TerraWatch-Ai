@@ -1,22 +1,24 @@
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
+
 import numpy as np
 import rasterio
-from rasterio.windows import Window
 from rasterio.errors import RasterioIOError
-from app.processing.readers.base import BaseReader
+from rasterio.windows import Window
+
 from app.processing.raster_data import RasterData
+from app.processing.readers.base import BaseReader
+
 
 class CorruptRasterError(Exception):
     """Raised when a raster file cannot be opened, is corrupted, or has invalid structure."""
-    pass
 
 class GeoTIFFReader(BaseReader):
     """
     Reader for GeoTIFF raster files using rasterio.
     """
 
-    def read_metadata(self, path: Path) -> Dict[str, Any]:
+    def read_metadata(self, path: Path) -> dict[str, Any]:
         """Read spatial and tag metadata from a GeoTIFF header without loading pixel data."""
         path = Path(path)
         if not path.is_file():
@@ -44,9 +46,9 @@ class GeoTIFFReader(BaseReader):
         except (RasterioIOError, Exception) as e:
             if isinstance(e, FileNotFoundError):
                 raise
-            raise CorruptRasterError(f"Corrupt or unreadable raster at {path}: {str(e)}") from e
+            raise CorruptRasterError(f"Corrupt or unreadable raster at {path}: {e!s}") from e
 
-    def read(self, path: Path, window: Optional[Window] = None) -> RasterData:
+    def read(self, path: Path, window: Window | None = None) -> RasterData:
         path = Path(path)
         if not path.is_file():
             raise FileNotFoundError(f"Raster file not found: {path}")
@@ -81,4 +83,4 @@ class GeoTIFFReader(BaseReader):
         except (RasterioIOError, Exception) as e:
             if isinstance(e, FileNotFoundError):
                 raise
-            raise CorruptRasterError(f"Corrupt or unreadable raster at {path}: {str(e)}") from e
+            raise CorruptRasterError(f"Corrupt or unreadable raster at {path}: {e!s}") from e

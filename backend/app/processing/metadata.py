@@ -1,12 +1,12 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
+
 
 class MetadataParsingError(Exception):
     """Raised when sidecar metadata is missing or invalid."""
-    pass
 
-def find_sidecar(raster_path: Path) -> Optional[Path]:
+def find_sidecar(raster_path: Path) -> Path | None:
     """
     Find sidecar JSON metadata corresponding to a raster file.
     Checks <name>.json in the same directory.
@@ -17,7 +17,7 @@ def find_sidecar(raster_path: Path) -> Optional[Path]:
         return sidecar
     return None
 
-def normalize_metadata(data: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_metadata(data: dict[str, Any]) -> dict[str, Any]:
     """
     Normalize raw sidecar metadata to conform to standard observation structure.
     """
@@ -50,7 +50,7 @@ def normalize_metadata(data: Dict[str, Any]) -> Dict[str, Any]:
     }
     return normalized
 
-def load_sidecar_metadata(sidecar_path: Path) -> Dict[str, Any]:
+def load_sidecar_metadata(sidecar_path: Path) -> dict[str, Any]:
     """
     Load and normalize metadata from a sidecar JSON file.
     """
@@ -63,4 +63,4 @@ def load_sidecar_metadata(sidecar_path: Path) -> Dict[str, Any]:
             raw_data = json.load(f)
         return normalize_metadata(raw_data)
     except json.JSONDecodeError as e:
-        raise MetadataParsingError(f"Invalid JSON in sidecar {path}: {str(e)}") from e
+        raise MetadataParsingError(f"Invalid JSON in sidecar {path}: {e!s}") from e

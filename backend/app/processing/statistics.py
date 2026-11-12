@@ -1,7 +1,9 @@
-from typing import Any, Dict
+from typing import Any
+
 import numpy as np
 
-def compute_stats(diff_array: np.ndarray, nodata: float = -9999.0) -> Dict[str, Any]:
+
+def compute_stats(diff_array: np.ndarray, nodata: float = -9999.0) -> dict[str, Any]:
     """
     Compute summary statistics on valid pixels of a difference array.
 

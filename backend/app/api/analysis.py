@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import APIRouter, status
 from fastapi.responses import FileResponse, JSONResponse
 
+from app.api.helpers import fetch_observation, resolve_provider
 from app.config import settings
+from app.processing.validation import validate_compatibility
 from app.providers.registry import get_provider
 from app.schemas.analysis import (
     JobCreateRequest,
@@ -18,9 +22,9 @@ from app.services.job_manager import (
     ResultNotFoundError,
     job_manager,
 )
-from app.processing.validation import validate_compatibility
 from app.services.validator import validate_aoi_geometry
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["analysis"])
 
 
@@ -44,65 +48,18 @@ def validate_analysis_pair(request: ValidateRequest):
         )
 
     # Provider access
-    try:
-        provider = get_provider()
-    except NotImplementedError as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
-        )
+    provider = resolve_provider(get_provider)
+    if isinstance(provider, JSONResponse):
+        return provider
 
     # Look up observations
-    try:
-        before_obs = provider.get(request.before_id)
-    except KeyError:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"error": {"code": "OBSERVATION_NOT_FOUND", "message": f"Observation '{request.before_id}' not found", "details": None}},
-        )
-    except PermissionError:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Invalid observation identifier", "details": None}},
-        )
-    except NotImplementedError as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
-        )
+    before_obs = fetch_observation(provider, request.before_id)
+    if isinstance(before_obs, JSONResponse):
+        return before_obs
 
-    try:
-        after_obs = provider.get(request.after_id)
-    except KeyError:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"error": {"code": "OBSERVATION_NOT_FOUND", "message": f"Observation '{request.after_id}' not found", "details": None}},
-        )
-    except PermissionError:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Invalid observation identifier", "details": None}},
-        )
-    except NotImplementedError as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
-        )
+    after_obs = fetch_observation(provider, request.after_id)
+    if isinstance(after_obs, JSONResponse):
+        return after_obs
 
     return validate_compatibility(
         obs_a=before_obs,
@@ -133,65 +90,18 @@ def create_analysis_job(request: JobCreateRequest):
         )
 
     # Provider access
-    try:
-        provider = get_provider()
-    except NotImplementedError as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
-        )
+    provider = resolve_provider(get_provider)
+    if isinstance(provider, JSONResponse):
+        return provider
 
     # Look up observations
-    try:
-        before_obs = provider.get(request.before_id)
-    except KeyError:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"error": {"code": "OBSERVATION_NOT_FOUND", "message": f"Observation '{request.before_id}' not found", "details": None}},
-        )
-    except PermissionError:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Invalid observation identifier", "details": None}},
-        )
-    except NotImplementedError as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
-        )
+    before_obs = fetch_observation(provider, request.before_id)
+    if isinstance(before_obs, JSONResponse):
+        return before_obs
 
-    try:
-        after_obs = provider.get(request.after_id)
-    except KeyError:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"error": {"code": "OBSERVATION_NOT_FOUND", "message": f"Observation '{request.after_id}' not found", "details": None}},
-        )
-    except PermissionError:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Invalid observation identifier", "details": None}},
-        )
-    except NotImplementedError as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
-        )
+    after_obs = fetch_observation(provider, request.after_id)
+    if isinstance(after_obs, JSONResponse):
+        return after_obs
 
     # Compatibility check
     val_res = validate_compatibility(
@@ -222,6 +132,7 @@ def create_analysis_job(request: JobCreateRequest):
         )
         return JobCreateResponse(job_id=job_id, status="queued")
     except Exception as e:
+        logger.exception("Failed to create analysis job")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"error": {"code": "INTERNAL_ERROR", "message": str(e), "details": None}},
@@ -307,7 +218,7 @@ def serve_output_file(job_id: str, filename: str):
     media_type = "application/octet-stream"
     if filename.endswith(".png"):
         media_type = "image/png"
-    elif filename.endswith(".tif") or filename.endswith(".tiff"):
+    elif filename.endswith((".tif", ".tiff")):
         media_type = "image/tiff"
     elif filename.endswith(".json"):
         media_type = "application/json"

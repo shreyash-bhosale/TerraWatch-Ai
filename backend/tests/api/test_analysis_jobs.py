@@ -1,5 +1,6 @@
 import json
 import time
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -154,6 +155,7 @@ def test_job_not_found():
 
 def test_job_fails_on_corrupt_raster(tmp_path, monkeypatch):
     from pathlib import Path
+
     from app.providers.mock_provider import MockProvider
 
     # Copy valid synthetic JSONs + write a corrupt TIFF for syn_after

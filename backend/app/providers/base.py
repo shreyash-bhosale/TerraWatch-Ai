@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from app.schemas.common import GeoJSONPolygonGeometry
 from app.schemas.observation import Observation
@@ -13,9 +12,9 @@ class BaseProvider(ABC):
     def search(
         self,
         aoi: GeoJSONPolygonGeometry,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-    ) -> Tuple[List[Observation], List[str]]:
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> tuple[list[Observation], list[str]]:
         """Search the provider's catalog for observations intersecting the AOI and matching date filters.
 
         Args:
@@ -26,14 +25,13 @@ class BaseProvider(ABC):
         Returns:
             A tuple of (matching observations, list of warning messages).
         """
-        pass
 
     @abstractmethod
     def list(
         self,
         limit: int = 50,
         offset: int = 0,
-    ) -> Tuple[List[Observation], int]:
+    ) -> tuple[list[Observation], int]:
         """List all observations in the catalog with pagination.
 
         Args:
@@ -43,7 +41,6 @@ class BaseProvider(ABC):
         Returns:
             A tuple of (observations list, total count).
         """
-        pass
 
     @abstractmethod
     def get(self, id: str) -> Observation:
@@ -58,7 +55,6 @@ class BaseProvider(ABC):
         Raises:
             KeyError: If observation is not found.
         """
-        pass
 
     @abstractmethod
     def open_asset(self, id: str) -> Path:
@@ -75,4 +71,3 @@ class BaseProvider(ABC):
             FileNotFoundError: If the asset file does not exist on disk.
             PermissionError: If path traversal or access restriction is violated.
         """
-        pass

@@ -1,7 +1,10 @@
 from pathlib import Path
+
 import pytest
-from app.processing.readers.geotiff import GeoTIFFReader, CorruptRasterError
+
 from app.processing.pipeline import run_pipeline
+from app.processing.readers.geotiff import CorruptRasterError, GeoTIFFReader
+
 
 def test_corrupt_raster_file_raises_cleanly(tmp_path):
     corrupt_file = tmp_path / "corrupt.tif"

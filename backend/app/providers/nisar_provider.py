@@ -11,7 +11,6 @@ See docs/nisar-integration-checklist.md for the official integration checklist
 once NISAR public data and APIs are officially released.
 """
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from app.providers.base import BaseProvider
 from app.schemas.common import GeoJSONPolygonGeometry
@@ -27,16 +26,16 @@ class NisarProvider(BaseProvider):
     def search(
         self,
         aoi: GeoJSONPolygonGeometry,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-    ) -> Tuple[List[Observation], List[str]]:
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> tuple[list[Observation], list[str]]:
         raise NotImplementedError("BLOCKED: awaiting official NISAR resources")
 
     def list(
         self,
         limit: int = 50,
         offset: int = 0,
-    ) -> Tuple[List[Observation], int]:
+    ) -> tuple[list[Observation], int]:
         raise NotImplementedError("BLOCKED: awaiting official NISAR resources")
 
     def get(self, id: str) -> Observation:

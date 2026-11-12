@@ -1,8 +1,11 @@
 from pathlib import Path
+
 import numpy as np
 import pytest
 from rasterio.windows import Window
+
 from app.processing.readers.geotiff import GeoTIFFReader
+
 
 def test_geotiff_reader_reads_synthetic_before():
     fixtures_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "synthetic"
@@ -47,7 +50,7 @@ def test_reader_file_not_found():
 
 def test_read_metadata_avoids_pixel_load(monkeypatch):
     import rasterio.io
-    from app.processing.pipeline import run_pipeline
+
 
     fixtures_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "synthetic"
     before_path = fixtures_dir / "syn_before.tif"

@@ -1,8 +1,10 @@
 import json
 from pathlib import Path
+
 import numpy as np
-import rasterio
 import pytest
+import rasterio
+
 
 def test_fixtures_exist_and_match_spec():
     repo_root = Path(__file__).resolve().parent.parent.parent.parent

@@ -1,5 +1,6 @@
-from pyproj import Geod
 import shapely
+from pyproj import Geod
+from shapely.errors import ShapelyError
 from shapely.geometry import shape
 
 from app.config import settings
@@ -31,7 +32,7 @@ def validate_aoi_geometry(aoi: GeoJSONPolygonGeometry) -> None:
 
     try:
         poly = shape(aoi.model_dump())
-    except Exception as e:
+    except (ShapelyError, ValueError, TypeError) as e:
         raise ValueError(f"Failed to parse AOI GeoJSON geometry: {e}")
 
     if not poly.is_valid:

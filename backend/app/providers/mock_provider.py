@@ -1,13 +1,15 @@
 import json
-from datetime import datetime, timezone
+import logging
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 from shapely.geometry import shape
 
 from app.providers.base import BaseProvider
 from app.schemas.common import GeoJSONPolygonGeometry
 from app.schemas.observation import Observation
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_iso_date(date_str: str, is_end_of_day: bool = False) -> datetime:
@@ -26,7 +28,7 @@ def _parse_iso_date(date_str: str, is_end_of_day: bool = False) -> datetime:
 
     dt = datetime.fromisoformat(cleaned)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -39,9 +41,9 @@ class MockProvider(BaseProvider):
     def __init__(self, catalog_dir: Path):
         self.catalog_dir = Path(catalog_dir).resolve()
 
-    def _load_catalog(self) -> Dict[str, Observation]:
+    def _load_catalog(self) -> dict[str, Observation]:
         """Load and parse all valid observation JSON sidecars in catalog_dir."""
-        catalog: Dict[str, Observation] = {}
+        catalog: dict[str, Observation] = {}
         if not self.catalog_dir.is_dir():
             return catalog
 
@@ -57,24 +59,24 @@ class MockProvider(BaseProvider):
                 data["synthetic"] = True
                 obs = Observation.model_validate(data)
                 catalog[obs.id] = obs
-            except Exception:
-                continue
+            except (OSError, ValueError, TypeError) as exc:
+                logger.warning("Skipping invalid mock catalog entry '%s': %s", json_path.name, exc)
 
         return catalog
 
     def search(
         self,
         aoi: GeoJSONPolygonGeometry,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-    ) -> Tuple[List[Observation], List[str]]:
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> tuple[list[Observation], list[str]]:
         catalog = self._load_catalog()
         aoi_poly = shape(aoi.model_dump())
 
         start_dt = _parse_iso_date(start_date) if start_date else None
         end_dt = _parse_iso_date(end_date, is_end_of_day=True) if end_date else None
 
-        matching: List[Observation] = []
+        matching: list[Observation] = []
         for obs in catalog.values():
             # Date filter
             obs_dt = _parse_iso_date(obs.acquisition_date)
@@ -96,7 +98,7 @@ class MockProvider(BaseProvider):
         self,
         limit: int = 50,
         offset: int = 0,
-    ) -> Tuple[List[Observation], int]:
+    ) -> tuple[list[Observation], int]:
         catalog = self._load_catalog()
         all_obs = sorted(catalog.values(), key=lambda o: o.acquisition_date)
         total = len(all_obs)

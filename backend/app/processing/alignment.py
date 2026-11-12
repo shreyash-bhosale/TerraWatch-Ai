@@ -1,12 +1,13 @@
-from typing import Tuple
+
 import numpy as np
 import rasterio
 from rasterio.windows import Window
+
 from app.processing.raster_data import RasterData
+
 
 class AlignmentMismatchError(Exception):
     """Raised when two rasters have incompatible CRS, resolution, or non-overlapping grids."""
-    pass
 
 def check_alignment(a: RasterData, b: RasterData) -> bool:
     """
@@ -68,7 +69,7 @@ def check_alignment(a: RasterData, b: RasterData) -> bool:
 
     return False
 
-def align(a: RasterData, b: RasterData) -> Tuple[RasterData, RasterData]:
+def align(a: RasterData, b: RasterData) -> tuple[RasterData, RasterData]:
     """
     Ensure both rasters occupy identical spatial grids.
     If already matching, returns (a, b) unchanged.

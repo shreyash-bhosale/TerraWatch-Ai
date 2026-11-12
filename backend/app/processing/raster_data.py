@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from typing import Tuple
+
 import numpy as np
-from rasterio.transform import Affine
 from rasterio.crs import CRS
+from rasterio.transform import Affine
+
 
 @dataclass
 class RasterData:
@@ -13,8 +14,8 @@ class RasterData:
     transform: Affine
     crs: CRS
     nodata: float
-    bounds: Tuple[float, float, float, float]  # (west, south, east, north)
-    resolution: Tuple[float, float]  # (rx, ry)
+    bounds: tuple[float, float, float, float]  # (west, south, east, north)
+    resolution: tuple[float, float]  # (rx, ry)
     units: str = "dB"
 
     def __post_init__(self):
@@ -24,7 +25,7 @@ class RasterData:
             self.array = self.array.astype(np.float32)
 
     @property
-    def shape(self) -> Tuple[int, int]:
+    def shape(self) -> tuple[int, int]:
         return self.array.shape
 
     @property

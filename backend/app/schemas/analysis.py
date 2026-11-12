@@ -1,6 +1,9 @@
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
+
 from pydantic import BaseModel, Field
+
 from app.schemas.common import GeoJSONPolygonGeometry
+
 
 class RuleResult(BaseModel):
     id: str
@@ -19,7 +22,7 @@ class ValidateRequest(BaseModel):
 
 class ValidateResponse(BaseModel):
     compatible: bool
-    rules: List[RuleResult]
+    rules: list[RuleResult]
     order: ObservationOrder
 
 class JobCreateRequest(BaseModel):
@@ -50,12 +53,12 @@ class JobStatusResponse(BaseModel):
         "failed",
     ]
     created_at: str
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
+    started_at: str | None = None
+    finished_at: str | None = None
     before_id: str
     after_id: str
     synthetic: bool
-    error: Optional[JobError] = None
+    error: JobError | None = None
 
 class Stats(BaseModel):
     valid_pixel_count: int
@@ -74,10 +77,10 @@ class LayerUrls(BaseModel):
 
 class JobResultsResponse(BaseModel):
     statistics: Stats
-    bounds: List[float] = Field(..., description="[west, south, east, north] in EPSG:4326")
+    bounds: list[float] = Field(..., description="[west, south, east, north] in EPSG:4326")
     layers: LayerUrls
     geotiff_url: str
-    metadata: Dict[str, Any]
-    limitations: List[str]
+    metadata: dict[str, Any]
+    limitations: list[str]
     synthetic: bool
 

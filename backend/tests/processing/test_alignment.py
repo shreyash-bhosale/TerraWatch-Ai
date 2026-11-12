@@ -1,11 +1,14 @@
 from pathlib import Path
+
 import numpy as np
 import pytest
 from rasterio.crs import CRS
 from rasterio.transform import from_origin
-from app.processing.readers.geotiff import GeoTIFFReader
-from app.processing.alignment import check_alignment, align, AlignmentMismatchError
+
+from app.processing.alignment import AlignmentMismatchError, align, check_alignment
 from app.processing.raster_data import RasterData
+from app.processing.readers.geotiff import GeoTIFFReader
+
 
 def test_identical_aligned_rasters_pass():
     fixtures_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "synthetic"

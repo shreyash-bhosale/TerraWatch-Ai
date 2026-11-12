@@ -1,8 +1,9 @@
 import json
 from pathlib import Path
-import pytest
-from app.schemas.observation import Observation
+
 from app.processing.validation import validate_compatibility
+from app.schemas.observation import Observation
+
 
 def get_fixture_observation(name: str) -> Observation:
     fixtures_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "synthetic"
@@ -174,6 +175,7 @@ def test_v_valid_under_one_percent_fails():
     import numpy as np
     from rasterio.crs import CRS
     from rasterio.transform import from_origin
+
     from app.processing.raster_data import RasterData
 
     aoi = _load_demo_aoi()

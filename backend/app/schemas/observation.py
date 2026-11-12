@@ -1,6 +1,9 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
+
 from app.schemas.common import GeoJSONPolygonGeometry
+
 
 class Observation(BaseModel):
     id: str
@@ -10,26 +13,26 @@ class Observation(BaseModel):
     geometry: GeoJSONPolygonGeometry
     asset_location: str
     asset_format: str
-    product_name: Optional[str] = None
-    polarization: Optional[str] = None
-    frequency_band: Optional[str] = None
-    orbit_direction: Optional[str] = None
-    processing_level: Optional[str] = None
-    measurement_units: Optional[str] = None
-    resolution: Optional[float] = None
-    crs: Optional[str] = None
-    source_metadata: Optional[Dict[str, Any]] = None
+    product_name: str | None = None
+    polarization: str | None = None
+    frequency_band: str | None = None
+    orbit_direction: str | None = None
+    processing_level: str | None = None
+    measurement_units: str | None = None
+    resolution: float | None = None
+    crs: str | None = None
+    source_metadata: dict[str, Any] | None = None
 
 class ObservationSearchRequest(BaseModel):
     aoi: GeoJSONPolygonGeometry
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
+    start_date: str | None = None
+    end_date: str | None = None
 
 class ObservationSearchResponse(BaseModel):
-    observations: List[Observation]
-    warnings: List[str] = []
+    observations: list[Observation]
+    warnings: list[str] = []
 
 class ObservationListResponse(BaseModel):
-    observations: List[Observation]
+    observations: list[Observation]
     total: int
 

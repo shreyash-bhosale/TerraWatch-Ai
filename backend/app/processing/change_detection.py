@@ -1,5 +1,7 @@
 import numpy as np
+
 from app.processing.raster_data import RasterData
+
 
 def difference_db(before: RasterData, after: RasterData) -> np.ndarray:
     """

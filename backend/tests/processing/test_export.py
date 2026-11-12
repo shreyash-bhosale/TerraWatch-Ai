@@ -1,13 +1,15 @@
 import json
 from pathlib import Path
+
 import numpy as np
-from PIL import Image
-import pytest
 import rasterio
-from app.processing.readers.geotiff import GeoTIFFReader
+from PIL import Image
+
 from app.processing.change_detection import difference_db
-from app.processing.statistics import compute_stats
 from app.processing.export import export_results
+from app.processing.readers.geotiff import GeoTIFFReader
+from app.processing.statistics import compute_stats
+
 
 def test_export_results_and_geotiff_roundtrip(tmp_path):
     fixtures_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "synthetic"

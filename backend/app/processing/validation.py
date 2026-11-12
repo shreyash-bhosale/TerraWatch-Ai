@@ -1,6 +1,8 @@
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple, Union
+from datetime import UTC, datetime
+from typing import Any
+
 import numpy as np
+from shapely.errors import ShapelyError
 from shapely.geometry import shape
 
 from app.processing.preprocessing import (
@@ -23,11 +25,11 @@ def _parse_iso(date_str: str) -> datetime:
         cleaned = cleaned[:-1] + "+00:00"
     dt = datetime.fromisoformat(cleaned)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
-def _slice_window_valid_mask(raster: RasterData, aoi_dict: Dict[str, Any]) -> np.ndarray:
+def _slice_window_valid_mask(raster: RasterData, aoi_dict: dict[str, Any]) -> np.ndarray:
     window = compute_aoi_window(
         aoi_geometry=aoi_dict,
         raster_bounds=raster.bounds,
@@ -53,7 +55,7 @@ def _window_valid_mask(raster: RasterData) -> np.ndarray:
 def _read_window_for_observation(
     reader: GeoTIFFReader,
     asset_path: Any,
-    aoi_dict: Dict[str, Any],
+    aoi_dict: dict[str, Any],
 ) -> RasterData:
     hdr = reader.read_metadata(asset_path)
     window = compute_aoi_window(
@@ -70,12 +72,12 @@ def _read_window_for_observation(
 def _evaluate_valid_pixel_fraction(
     before_obs: Observation,
     after_obs: Observation,
-    aoi_dict: Dict[str, Any],
-    before_raster: Optional[RasterData],
-    after_raster: Optional[RasterData],
-    provider: Optional[Any],
+    aoi_dict: dict[str, Any],
+    before_raster: RasterData | None,
+    after_raster: RasterData | None,
+    provider: Any | None,
     rasters_pre_windowed: bool = False,
-) -> Tuple[bool, Optional[float], Optional[str]]:
+) -> tuple[bool, float | None, str | None]:
     """
     Evaluate valid pixel fraction in AOI window after nodata masking.
     Uses windowed reads when loading from a provider so full rasters are not loaded.
@@ -131,10 +133,10 @@ def _evaluate_valid_pixel_fraction(
 def validate_compatibility(
     obs_a: Observation,
     obs_b: Observation,
-    aoi_geometry: Union[Dict[str, Any], GeoJSONPolygonGeometry],
-    before_raster: Optional[RasterData] = None,
-    after_raster: Optional[RasterData] = None,
-    provider: Optional[Any] = None,
+    aoi_geometry: dict[str, Any] | GeoJSONPolygonGeometry,
+    before_raster: RasterData | None = None,
+    after_raster: RasterData | None = None,
+    provider: Any | None = None,
     rasters_pre_windowed: bool = False,
 ) -> ValidateResponse:
     """
@@ -143,7 +145,7 @@ def validate_compatibility(
     Automatically assigns earlier date as before, later as after.
     """
     aoi_dict = aoi_geometry.model_dump() if hasattr(aoi_geometry, "model_dump") else aoi_geometry
-    rules: List[RuleResult] = []
+    rules: list[RuleResult] = []
 
     # 1. V-SAME-ID
     same_id = obs_a.id == obs_b.id
@@ -187,7 +189,7 @@ def validate_compatibility(
                 f"Observation acquisition dates are identical ({obs_a.acquisition_date}); "
                 "cannot determine chronological order."
             )
-    except Exception as e:
+    except (ValueError, TypeError) as e:
         before_obs, after_obs = obs_a, obs_b
         order_passed = False
         order_msg = f"Invalid acquisition date format: {e}"
@@ -431,14 +433,14 @@ def validate_compatibility(
             aoi_msg = "AOI intersects both observation footprints with non-empty coverage."
         else:
             aoi_msg = "AOI does not intersect both observation footprints with non-empty common coverage."
-    except Exception as e:
+    except (ShapelyError, ValueError, TypeError, AttributeError) as e:
         aoi_msg = f"AOI footprint intersection check failed: {e}"
 
     # 11. V-VALID (>= 1% valid pixels after masking and AOI windowing)
     if not aoi_pass:
         valid_pixels_ok = False
-        valid_pct: Optional[float] = 0.0
-        window_err: Optional[str] = "AOI intersection is empty"
+        valid_pct: float | None = 0.0
+        window_err: str | None = "AOI intersection is empty"
     else:
         valid_pixels_ok, valid_pct, window_err = _evaluate_valid_pixel_fraction(
             before_obs=before_obs,

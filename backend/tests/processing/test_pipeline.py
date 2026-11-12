@@ -1,7 +1,10 @@
 import json
 from pathlib import Path
+
 import pytest
+
 from app.processing.pipeline import run_pipeline
+
 
 def test_full_pipeline_run_success(tmp_path):
     fixtures_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "synthetic"

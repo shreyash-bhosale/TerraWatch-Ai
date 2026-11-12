@@ -1,12 +1,14 @@
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
 import json
+import logging
 import os
-from pathlib import Path
-from typing import Any, Dict, Optional
 import uuid
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 
 from app.config import settings
+from app.processing.validation import validate_compatibility
 from app.providers.base import BaseProvider
 from app.providers.registry import get_provider
 from app.schemas.analysis import (
@@ -17,8 +19,9 @@ from app.schemas.analysis import (
     Stats,
 )
 from app.schemas.common import GeoJSONPolygonGeometry
-from app.processing.validation import validate_compatibility
 from app.services.validator import validate_aoi_geometry
+
+logger = logging.getLogger(__name__)
 
 
 class JobNotFoundError(Exception):
@@ -50,7 +53,7 @@ class JobManager:
         self.jobs_dir.mkdir(parents=True, exist_ok=True)
         self.outputs_dir.mkdir(parents=True, exist_ok=True)
 
-    def _atomic_write_job(self, job_dict: Dict[str, Any]) -> None:
+    def _atomic_write_job(self, job_dict: dict[str, Any]) -> None:
         self._ensure_dirs()
         job_id = job_dict["job_id"]
         target = self.jobs_dir / f"{job_id}.json"
@@ -59,24 +62,24 @@ class JobManager:
             json.dump(job_dict, f, indent=2)
         os.replace(temp, target)
 
-    def get_job(self, job_id: str) -> Dict[str, Any]:
+    def get_job(self, job_id: str) -> dict[str, Any]:
         target = self.jobs_dir / f"{job_id}.json"
         if not target.is_file():
             raise JobNotFoundError(f"Job '{job_id}' not found")
         try:
             return json.loads(target.read_text(encoding="utf-8"))
-        except Exception as e:
+        except (OSError, ValueError) as e:
             raise RuntimeError(f"Failed to read job state for '{job_id}': {e}")
 
     def update_job(
         self,
         job_id: str,
-        stage: Optional[str] = None,
-        status: Optional[str] = None,
-        error: Optional[Dict[str, str]] = None,
-        started_at: Optional[str] = None,
-        finished_at: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        stage: str | None = None,
+        status: str | None = None,
+        error: dict[str, str] | None = None,
+        started_at: str | None = None,
+        finished_at: str | None = None,
+    ) -> dict[str, Any]:
         job_data = self.get_job(job_id)
         if stage is not None:
             job_data["stage"] = stage
@@ -97,7 +100,7 @@ class JobManager:
         before_id: str,
         after_id: str,
         aoi: GeoJSONPolygonGeometry,
-        provider: Optional[BaseProvider] = None,
+        provider: BaseProvider | None = None,
     ) -> str:
         self._ensure_dirs()
         if provider is None:
@@ -129,7 +132,7 @@ class JobManager:
         is_synthetic = bool(obs_before.synthetic or obs_after.synthetic)
         result_dir = str((self.outputs_dir / job_id).resolve())
 
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = datetime.now(UTC).isoformat()
         job_record = {
             "job_id": job_id,
             "status": "queued",
@@ -152,7 +155,7 @@ class JobManager:
     def _run_job_worker(self, job_id: str, provider: BaseProvider) -> None:
         try:
             job_data = self.get_job(job_id)
-            now_iso = datetime.now(timezone.utc).isoformat()
+            now_iso = datetime.now(UTC).isoformat()
             self.update_job(job_id, stage="validating", status="running", started_at=now_iso)
 
             # Resolve observation assets
@@ -178,7 +181,7 @@ class JobManager:
             )
 
             # Success transition
-            finished_iso = datetime.now(timezone.utc).isoformat()
+            finished_iso = datetime.now(UTC).isoformat()
             self.update_job(
                 job_id,
                 stage="completed",
@@ -187,7 +190,8 @@ class JobManager:
             )
 
         except Exception as e:
-            finished_iso = datetime.now(timezone.utc).isoformat()
+            logger.exception("Analysis job %s failed", job_id)
+            finished_iso = datetime.now(UTC).isoformat()
             code = getattr(e, "code", "INTERNAL_ERROR")
             if "not found" in str(e).lower():
                 code = "OBSERVATION_NOT_FOUND"

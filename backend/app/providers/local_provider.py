@@ -1,7 +1,7 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import ClassVar
 
 from shapely.geometry import shape
 
@@ -22,7 +22,7 @@ def _parse_iso_date(date_str: str, is_end_of_day: bool = False) -> datetime:
             cleaned += "T00:00:00+00:00"
     dt = datetime.fromisoformat(cleaned)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -32,7 +32,9 @@ class LocalProvider(BaseProvider):
     Enforces strict path-traversal prevention and reports warnings for missing or malformed sidecars.
     """
 
-    RASTER_EXTENSIONS = {".tif", ".tiff", ".geotiff", ".nc", ".h5", ".hdf5"}
+    RASTER_EXTENSIONS: ClassVar[frozenset[str]] = frozenset(
+        {".tif", ".tiff", ".geotiff", ".nc", ".h5", ".hdf5"}
+    )
 
     def __init__(self, local_dir: Path):
         self.local_dir = Path(local_dir).resolve()
@@ -47,8 +49,8 @@ class LocalProvider(BaseProvider):
             raise PermissionError("Access denied: Path traversal detected")
         return resolved
 
-    def _scan(self, warnings: Optional[List[str]] = None) -> Dict[str, Observation]:
-        catalog: Dict[str, Observation] = {}
+    def _scan(self, warnings: list[str] | None = None) -> dict[str, Observation]:
+        catalog: dict[str, Observation] = {}
         if not self.local_dir.is_dir():
             return catalog
 
@@ -70,7 +72,7 @@ class LocalProvider(BaseProvider):
                 self._validate_path_contained(sidecar_path)
                 data = json.loads(sidecar_path.read_text(encoding="utf-8"))
                 if not isinstance(data, dict):
-                    raise ValueError("Sidecar root must be a JSON object")
+                    raise TypeError("Sidecar root must be a JSON object")
                 if "id" not in data or "geometry" not in data:
                     raise ValueError("Sidecar missing required 'id' or 'geometry' fields")
 
@@ -83,7 +85,7 @@ class LocalProvider(BaseProvider):
                 catalog[obs.id] = obs
             except PermissionError:
                 raise
-            except Exception as e:
+            except (OSError, ValueError, TypeError) as e:
                 if warnings is not None:
                     warnings.append(f"Invalid sidecar for raster '{file_path.name}': {e}, skipping.")
                 continue
@@ -93,17 +95,17 @@ class LocalProvider(BaseProvider):
     def search(
         self,
         aoi: GeoJSONPolygonGeometry,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-    ) -> Tuple[List[Observation], List[str]]:
-        warnings: List[str] = []
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> tuple[list[Observation], list[str]]:
+        warnings: list[str] = []
         catalog = self._scan(warnings=warnings)
         aoi_poly = shape(aoi.model_dump())
 
         start_dt = _parse_iso_date(start_date) if start_date else None
         end_dt = _parse_iso_date(end_date, is_end_of_day=True) if end_date else None
 
-        matching: List[Observation] = []
+        matching: list[Observation] = []
         for obs in catalog.values():
             obs_dt = _parse_iso_date(obs.acquisition_date)
             if start_dt and obs_dt < start_dt:
@@ -122,7 +124,7 @@ class LocalProvider(BaseProvider):
         self,
         limit: int = 50,
         offset: int = 0,
-    ) -> Tuple[List[Observation], int]:
+    ) -> tuple[list[Observation], int]:
         catalog = self._scan()
         all_obs = sorted(catalog.values(), key=lambda o: o.acquisition_date)
         total = len(all_obs)

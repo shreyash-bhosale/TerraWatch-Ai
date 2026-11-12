@@ -1,22 +1,23 @@
-import json
 from pathlib import Path
+
 import numpy as np
 import pytest
 from rasterio.crs import CRS
 from rasterio.transform import from_origin
 from rasterio.warp import transform_bounds
-from app.processing.raster_data import RasterData
-from app.processing.readers.geotiff import GeoTIFFReader
+
 from app.processing.preprocessing import (
     AoiTransformError,
-    crop_to_aoi,
-    compute_aoi_window,
-    mask_nodata_to_nan,
     EmptyWindowError,
     NoValidPixelsError,
+    compute_aoi_window,
+    crop_to_aoi,
 )
+from app.processing.raster_data import RasterData
+from app.processing.readers.geotiff import GeoTIFFReader
 from app.processing.validation import validate_compatibility
 from app.schemas.observation import Observation
+
 
 def test_crop_to_aoi_valid():
     fixtures_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "synthetic"

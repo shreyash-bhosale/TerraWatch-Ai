@@ -1,10 +1,13 @@
 import json
 from pathlib import Path
+
 import numpy as np
 import pytest
-from app.processing.readers.geotiff import GeoTIFFReader
+
 from app.processing.change_detection import difference_db
+from app.processing.readers.geotiff import GeoTIFFReader
 from app.processing.statistics import compute_stats
+
 
 def test_statistics_exact_match_with_expected():
     fixtures_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "synthetic"

@@ -1,14 +1,15 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 import matplotlib
 import numpy as np
-from PIL import Image
 import rasterio
+from PIL import Image
 from rasterio.transform import Affine, array_bounds
 from rasterio.warp import transform_bounds
 
-LIMITATIONS_NOTICE: List[str] = [
+LIMITATIONS_NOTICE: list[str] = [
     "Difference of calibrated SAR backscatter (dB) between two dates; it is not a classified event map.",
     "Changes may come from surface change, soil moisture, vegetation, wind, incidence angle, speckle, or processing differences.",
     "No threshold or classification has been applied.",
@@ -47,13 +48,13 @@ def export_results(
     diff_array: np.ndarray,
     transform: Affine,
     crs: Any,
-    stats: Dict[str, Any],
-    metadata: Dict[str, Any],
+    stats: dict[str, Any],
+    metadata: dict[str, Any],
     output_dir: Path,
-    before_array: Optional[np.ndarray] = None,
-    after_array: Optional[np.ndarray] = None,
+    before_array: np.ndarray | None = None,
+    after_array: np.ndarray | None = None,
     nodata: float = -9999.0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Export processing outputs:
     - GeoTIFF: difference.tif (LZW compressed, nodata=-9999.0)

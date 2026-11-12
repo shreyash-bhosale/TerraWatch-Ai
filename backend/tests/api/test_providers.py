@@ -1,15 +1,16 @@
 import json
 from pathlib import Path
+
 import numpy as np
 import pytest
 import rasterio
-from rasterio.transform import from_bounds
 from fastapi.testclient import TestClient
+from rasterio.transform import from_bounds
 
-from app.main import app
 from app.config import settings
-from app.providers.mock_provider import MockProvider
+from app.main import app
 from app.providers.local_provider import LocalProvider
+from app.providers.mock_provider import MockProvider
 from app.providers.nisar_provider import NisarProvider
 from app.providers.registry import get_provider
 from app.schemas.common import GeoJSONPolygonGeometry
@@ -156,7 +157,7 @@ def test_local_provider_path_traversal_blocked(tmp_path: Path):
 
 def test_mock_provider_lookup_and_error_cases(tmp_path: Path):
     provider = MockProvider(settings.synthetic_data_path)
-    listed, total = provider.list()
+    _listed, total = provider.list()
     assert total >= 2
     obs = provider.get("syn_before")
     assert obs.synthetic is True

@@ -5,11 +5,12 @@ Conforms strictly to Section 9 of PRD.md.
 """
 
 import json
-import os
 from pathlib import Path
+
 import numpy as np
 import rasterio
 from rasterio.transform import from_origin
+
 
 def get_output_dir() -> Path:
     repo_root = Path(__file__).resolve().parent.parent.parent
