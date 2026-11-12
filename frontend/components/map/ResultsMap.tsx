@@ -2,7 +2,9 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { KEYLESS_BASEMAP_STYLE } from "@/lib/config";
-import { AlertCircle, Layers } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Layers, RotateCcw } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 export type LayerType = "difference" | "before" | "after";
@@ -73,6 +75,7 @@ export function ResultsMap({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [webGlSupported, setWebGlSupported] = useState(true);
   const [styleError, setStyleError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   const activeUrl = layers[activeLayer];
 
@@ -130,12 +133,16 @@ export function ResultsMap({
         );
 
         map.on("error", () => {
-          // Non-fatal tile load errors shouldn't crash overlay
+          if (!cancelled) {
+            setStyleError(true);
+          }
         });
 
-        map.on("load", () => {
+        map.on("style.load", () => {
           if (cancelled) return;
+          if (mapInstanceRef.current === map) return;
           mapInstanceRef.current = map;
+          map.resize();
           setMapLoaded(true);
 
           const coords: [
@@ -230,7 +237,7 @@ export function ResultsMap({
       setMapLoaded(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bounds[0], bounds[1], bounds[2], bounds[3]]);
+  }, [bounds[0], bounds[1], bounds[2], bounds[3], retryKey]);
 
   // Toggle visibility cleanly between preloaded image layers
   useEffect(() => {
@@ -263,11 +270,33 @@ export function ResultsMap({
 
   if (!webGlSupported || styleError) {
     return (
-      <div className="w-full h-[460px] rounded-xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
-        <div className="mb-3 flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-          <AlertCircle className="w-3.5 h-3.5" />
-          <span>WebGL map renderer unavailable; showing direct raster preview</span>
-        </div>
+      <div className="w-full min-h-[460px] rounded-xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden gap-4">
+        {styleError ? (
+          <Alert variant="destructive" className="max-w-lg text-left">
+            <AlertCircle className="w-4 h-4" />
+            <AlertTitle>Map Style Load Failed</AlertTitle>
+            <AlertDescription className="text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-1">
+              <span>Unable to load basemap tiles or style. Showing direct raster overlay preview.</span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setStyleError(false);
+                  setRetryKey((k) => k + 1);
+                }}
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+            <AlertCircle className="w-3.5 h-3.5" />
+            <span>WebGL map renderer unavailable; showing direct raster preview</span>
+          </div>
+        )}
         <div className="relative border border-slate-700 bg-slate-950 p-2 rounded-lg shadow-inner max-w-sm">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -276,7 +305,7 @@ export function ResultsMap({
             className="w-64 h-64 object-contain [image-rendering:pixelated]"
           />
         </div>
-        <div className="mt-3 text-xs font-mono text-slate-400">
+        <div className="text-xs font-mono text-slate-400">
           Bounds: [{bounds.map((b) => b.toFixed(4)).join(", ")}]
         </div>
       </div>

@@ -3,7 +3,19 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { apiClient, getRecentJobs, type RecentJobRecord } from "@/lib/api";
+import {
+  apiClient,
+  getRecentJobs,
+  isApiError,
+  type JobStatusResponse,
+  type RecentJobRecord,
+} from "@/lib/api";
+import {
+  getStoredAOI,
+  validateAOI,
+  type AOIValidationResult,
+  type GeoJSONPolygonGeometry,
+} from "@/lib/geo";
 import {
   ArrowRight,
   CheckCircle2,
@@ -13,6 +25,8 @@ import {
   Layers,
   Database,
   Calendar,
+  MapPin,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,10 +53,45 @@ export default function DashboardPage() {
   });
 
   const [recentJobs, setRecentJobs] = useState<RecentJobRecord[]>([]);
+  const [storedAoi, setStoredAoi] = useState<GeoJSONPolygonGeometry | null>(null);
+  const [aoiMetrics, setAoiMetrics] = useState<AOIValidationResult | null>(null);
 
   useEffect(() => {
     setRecentJobs(getRecentJobs());
+    const saved = getStoredAOI();
+    if (saved) {
+      setStoredAoi(saved);
+      setAoiMetrics(validateAOI(saved));
+    }
   }, []);
+
+  const jobIds = recentJobs.map((j) => j.jobId);
+  const {
+    data: liveJobs,
+    isLoading: isLoadingJobs,
+    error: jobsError,
+    refetch: refetchJobs,
+  } = useQuery({
+    queryKey: ["recent-jobs-status", jobIds],
+    enabled: jobIds.length > 0,
+    retry: false,
+    queryFn: async () => {
+      const results = await Promise.all(
+        recentJobs.map(async (record) => {
+          try {
+            const live: JobStatusResponse = await apiClient.getAnalysisStatus(record.jobId);
+            return { record, live, notFound: false };
+          } catch (err) {
+            if (isApiError(err) && err.error.code === "JOB_NOT_FOUND") {
+              return { record, live: null, notFound: true };
+            }
+            throw err;
+          }
+        })
+      );
+      return results;
+    },
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col gap-8">
@@ -159,6 +208,62 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Study Area Summary (FR-01) */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h2 className="text-base font-semibold text-white flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-blue-400" />
+              Study Area Summary
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Active Area of Interest stored in session for radar observation searches.
+            </p>
+          </div>
+          <Link href="/explore">
+            <Button variant="outline" size="sm" className="text-xs">
+              {storedAoi && aoiMetrics?.valid ? "Edit AOI" : "Select AOI"}
+            </Button>
+          </Link>
+        </div>
+
+        {!storedAoi || !aoiMetrics?.valid ? (
+          <div className="text-sm text-slate-400 py-6 text-center border border-dashed border-slate-800 rounded-lg flex flex-col items-center gap-2">
+            <p className="font-medium text-slate-300">No study area selected.</p>
+            <p className="text-xs text-slate-500 max-w-md">
+              Draw a bounding polygon or load the synthetic demo footprint on the Explore page to define your analysis boundary.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-slate-950/50 border border-slate-800/80 rounded-lg p-3">
+              <span className="text-xs text-slate-500 block">Vertices</span>
+              <span className="text-sm font-mono text-slate-200 mt-1 block">
+                {storedAoi.coordinates[0].length} vertices
+              </span>
+            </div>
+            <div className="bg-slate-950/50 border border-slate-800/80 rounded-lg p-3">
+              <span className="text-xs text-slate-500 block">Approx. Area</span>
+              <span className="text-sm font-mono text-slate-200 mt-1 block">
+                {aoiMetrics.areaKm2?.toFixed(2)} km²
+              </span>
+            </div>
+            <div className="bg-slate-950/50 border border-slate-800/80 rounded-lg p-3">
+              <span className="text-xs text-slate-500 block">Centroid</span>
+              <span className="text-xs font-mono text-slate-200 mt-1 block">
+                {aoiMetrics.centroid ? `${aoiMetrics.centroid[0].toFixed(4)}, ${aoiMetrics.centroid[1].toFixed(4)}` : "—"}
+              </span>
+            </div>
+            <div className="bg-slate-950/50 border border-slate-800/80 rounded-lg p-3">
+              <span className="text-xs text-slate-500 block">Bounding Box</span>
+              <span className="text-[11px] font-mono text-slate-300 mt-1 block break-all">
+                {aoiMetrics.bbox ? `[${aoiMetrics.bbox.map((b) => b.toFixed(3)).join(", ")}]` : "—"}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Recent Analyses (FR-01) */}
       <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between">
@@ -168,10 +273,24 @@ export default function DashboardPage() {
               Recent Analyses
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Saved history of executed SAR backscatter differencing jobs.
+              Saved job IDs hydrated with live execution status from the backend jobs API.
             </p>
           </div>
         </div>
+
+        {jobsError && (
+          <Alert variant="destructive">
+            <XCircle className="w-4 h-4" />
+            <AlertTitle>Unable to Refresh Recent Jobs</AlertTitle>
+            <AlertDescription className="text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-1">
+              <span>Failed to fetch live job status from the backend API.</span>
+              <Button type="button" size="sm" variant="outline" onClick={() => refetchJobs()}>
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {recentJobs.length === 0 ? (
           <div className="text-sm text-slate-400 py-10 text-center border border-dashed border-slate-800 rounded-lg flex flex-col items-center justify-center gap-2">
@@ -192,6 +311,7 @@ export default function DashboardPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Job ID</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Before Observation</TableHead>
                   <TableHead>After Observation</TableHead>
                   <TableHead>Created At</TableHead>
@@ -200,43 +320,72 @@ export default function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentJobs.map((job) => (
-                  <TableRow key={job.jobId}>
-                    <TableCell className="font-mono text-xs text-blue-400 font-medium">
-                      {job.jobId}
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-300 flex items-center gap-1.5">
-                      <Database className="w-3.5 h-3.5 text-slate-500" />
-                      {job.beforeId}
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-300">
-                      <div className="flex items-center gap-1.5">
-                        <Database className="w-3.5 h-3.5 text-slate-500" />
-                        {job.afterId}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-400">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                        {new Date(job.createdAt).toLocaleString()}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {job.synthetic ? (
-                        <Badge variant="synthetic">SYNTHETIC</Badge>
-                      ) : (
-                        <Badge variant="secondary">OBSERVATION</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link href={`/results?job=${encodeURIComponent(job.jobId)}`}>
-                        <Button size="sm" variant="outline" className="text-xs">
-                          View Results
-                        </Button>
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {recentJobs.map((job) => {
+                  const hydrated = liveJobs?.find((entry) => entry.record.jobId === job.jobId);
+                  const liveStatus = hydrated?.live?.status;
+                  const displayBefore = hydrated?.live?.before_id ?? job.beforeId;
+                  const displayAfter = hydrated?.live?.after_id ?? job.afterId;
+                  const displaySynthetic = hydrated?.live?.synthetic ?? job.synthetic;
+                  const isCompleted = liveStatus === "completed";
+                  const targetHref = isCompleted
+                    ? `/results?job=${encodeURIComponent(job.jobId)}`
+                    : `/analysis?job=${encodeURIComponent(job.jobId)}`;
+
+                  return (
+                    <TableRow key={job.jobId}>
+                      <TableCell className="font-mono text-xs text-blue-400 font-medium">
+                        {job.jobId}
+                      </TableCell>
+                      <TableCell>
+                        {isLoadingJobs ? (
+                          <Badge variant="outline">CHECKING</Badge>
+                        ) : liveStatus === "completed" ? (
+                          <Badge variant="success">COMPLETED</Badge>
+                        ) : liveStatus === "failed" ? (
+                          <Badge variant="destructive">FAILED</Badge>
+                        ) : liveStatus ? (
+                          <Badge variant="default">{liveStatus.toUpperCase()}</Badge>
+                        ) : hydrated?.notFound ? (
+                          <Badge variant="outline">MISSING</Badge>
+                        ) : (
+                          <Badge variant="outline">UNKNOWN</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-300">
+                        <div className="flex items-center gap-1.5">
+                          <Database className="w-3.5 h-3.5 text-slate-500" />
+                          {displayBefore}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-300">
+                        <div className="flex items-center gap-1.5">
+                          <Database className="w-3.5 h-3.5 text-slate-500" />
+                          {displayAfter}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-400">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                          {new Date(job.createdAt).toLocaleString()}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {displaySynthetic ? (
+                          <Badge variant="synthetic">SYNTHETIC</Badge>
+                        ) : (
+                          <Badge variant="secondary">OBSERVATION</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link href={targetHref}>
+                          <Button size="sm" variant="outline" className="text-xs">
+                            {isCompleted ? "View Results" : "View Status"}
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

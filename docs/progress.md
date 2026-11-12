@@ -68,3 +68,14 @@
   - `make test`: `69 passed, 7 warnings in 0.67s` (pytest) and `6 test files passed, 13 tests passed in 885ms` (Vitest).
   - `make build`: Next.js 14.2.18 built `9/9` routes cleanly.
   - `cd frontend && npm run test:e2e`: `3 passed (9.5s)` across `1280x800`, `820x1024`, and `390x844`.
+
+### Group 3 — Frontend Fixes (`F-02` to `F-06`) — VERIFIED
+- **Pre-fix failing tests (`cd frontend && npm test` before fixes):**
+  - `4 test files failed | 4 passed (8)`, `7 tests failed | 12 passed (19)` (`navbar.test.tsx`, `analysis.test.tsx` F-03/F-04, `dashboard.test.tsx` F-06, `map_components.test.tsx` F-05/F-06).
+- **Post-fix verification:**
+  - `make test`: `69 passed` (pytest) and `8 test files passed (8), 19 tests passed (19)` (Vitest).
+  - `cd frontend && npm run build`: Next.js 14.2.18 built `9/9` routes cleanly.
+  - `cd frontend && npm run test:e2e`: `3 passed (9.6s)` across `1280x800`, `820x1024`, and `390x844` (including 390px `scrollWidth === clientWidth`, keyboard mobile nav, MapLibre `custom-aoi-source` geometry equality check, `/analysis?job=<id>` load, and Dashboard Study Area + Recent Analyses live status).
+  - Real-Chrome backend-stop test (`f04_polling_error.png`): killing `uvicorn` mid-run showed `Polling Connection Error` + `Retry` while keeping `RUNNING` visible; restarting backend + clicking `Retry` resumed polling and reached `COMPLETED`.
+  - Mobile width verification at 390px: `{"sw":390,"cw":390}` (`docs/evidence/fixes/f02_mobile_390px.png`).
+  - Explore MapLibre `style.load` fix (`f05_demo_aoi_map.png`): `{"hasSource":true,"hasFill":true,"hasOutline":true}`.

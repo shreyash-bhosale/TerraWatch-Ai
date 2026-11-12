@@ -9,7 +9,8 @@ import {
   validateAOI,
 } from "@/lib/geo";
 import { Button } from "@/components/ui/button";
-import { Square, Pentagon, MousePointer, Trash2, Sparkles } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Square, Pentagon, MousePointer, Trash2, Sparkles, AlertTriangle, RotateCcw } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 interface AoiDrawMapProps {
@@ -28,15 +29,86 @@ export function AoiDrawMap({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const terraDrawRef = useRef<any>(null);
+  const mapLoadedRef = useRef<boolean>(false);
+  const lastTerraDrawJsonRef = useRef<string | null>(null);
+  const onAoiChangeRef = useRef(onAoiChange);
+  onAoiChangeRef.current = onAoiChange;
 
   const [activeMode, setActiveMode] = useState<string>("polygon");
   const [webGlSupported, setWebGlSupported] = useState<boolean>(true);
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
+  const [styleError, setStyleError] = useState<boolean>(false);
+  const [retryKey, setRetryKey] = useState<number>(0);
+
+  const clearAoiSource = useCallback((map: any) => {
+    if (!map) return;
+    try {
+      if (map.getLayer("custom-aoi-fill")) map.removeLayer("custom-aoi-fill");
+      if (map.getLayer("custom-aoi-outline")) map.removeLayer("custom-aoi-outline");
+      if (map.getSource("custom-aoi-source")) map.removeSource("custom-aoi-source");
+    } catch {
+      // ignore if style is not ready
+    }
+    if (mapContainerRef.current) {
+      mapContainerRef.current.removeAttribute("data-aoi-geometry");
+    }
+  }, []);
+
+  const displayAoiOnMap = useCallback((map: any, aoi: GeoJSONPolygonGeometry) => {
+    if (!map || !mapLoadedRef.current) return;
+
+    if (map.getSource("custom-aoi-source")) {
+      map.getSource("custom-aoi-source").setData(aoi);
+    } else {
+      map.addSource("custom-aoi-source", {
+        type: "geojson",
+        data: aoi,
+      });
+
+      map.addLayer({
+        id: "custom-aoi-fill",
+        type: "fill",
+        source: "custom-aoi-source",
+        paint: {
+          "fill-color": "#3b82f6",
+          "fill-opacity": 0.25,
+        },
+      });
+
+      map.addLayer({
+        id: "custom-aoi-outline",
+        type: "line",
+        source: "custom-aoi-source",
+        paint: {
+          "line-color": "#60a5fa",
+          "line-width": 2,
+          "line-dasharray": [2, 1],
+        },
+      });
+    }
+
+    if (mapContainerRef.current) {
+      mapContainerRef.current.setAttribute("data-aoi-geometry", JSON.stringify(aoi));
+    }
+
+    const val = validateAOI(aoi);
+    if (val.valid && val.bbox) {
+      const [w, s, e, n] = val.bbox;
+      map.fitBounds(
+        [
+          [w, s],
+          [e, n],
+        ],
+        { padding: 40, duration: 600 }
+      );
+    }
+  }, []);
 
   // Initialize Map and TerraDraw
   useEffect(() => {
     let map: any = null;
     let terraDraw: any = null;
+    let cancelled = false;
 
     async function initMap() {
       if (!mapContainerRef.current) return;
@@ -64,8 +136,22 @@ export function AoiDrawMap({
 
         map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
-        map.on("load", async () => {
+        map.on("error", () => {
+          if (!cancelled) {
+            setStyleError(true);
+          }
+        });
+
+        map.on("style.load", async () => {
+          if (cancelled) return;
+          if (mapInstanceRef.current === map) return;
           mapInstanceRef.current = map;
+          mapLoadedRef.current = true;
+          setStyleError(false);
+          map.resize();
+          if (mapContainerRef.current) {
+            (mapContainerRef.current as any).__maplibreMap = map;
+          }
           setMapLoaded(true);
 
           try {
@@ -124,17 +210,20 @@ export function AoiDrawMap({
               if (snapshot && snapshot.length > 0) {
                 const latest = snapshot[snapshot.length - 1];
                 if (latest && latest.geometry && latest.geometry.type === "Polygon") {
-                  onAoiChange(latest.geometry as GeoJSONPolygonGeometry);
+                  const geom = latest.geometry as GeoJSONPolygonGeometry;
+                  lastTerraDrawJsonRef.current = JSON.stringify(geom);
+                  onAoiChangeRef.current(geom);
                 }
               }
             };
 
             terraDraw.on("finish", handleGeometryUpdate);
-            terraDraw.on("change", (ids: any[], type: string) => {
+            terraDraw.on("change", (_ids: any[], type: string) => {
               if (type === "delete") {
                 const snapshot = terraDraw.getSnapshot();
                 if (!snapshot || snapshot.length === 0) {
-                  onAoiChange(null);
+                  lastTerraDrawJsonRef.current = null;
+                  onAoiChangeRef.current(null);
                 } else {
                   handleGeometryUpdate();
                 }
@@ -142,24 +231,23 @@ export function AoiDrawMap({
                 handleGeometryUpdate();
               }
             });
-
-            // If initial AOI is provided, display it
-            if (initialAoi) {
-              displayAoiOnMap(map, initialAoi);
-            }
           } catch (tdErr) {
             console.warn("TerraDraw could not be initialized:", tdErr);
           }
         });
       } catch (err) {
         console.warn("MapLibre GL could not be loaded:", err);
-        setWebGlSupported(false);
+        setStyleError(true);
       }
     }
 
     initMap();
 
     return () => {
+      cancelled = true;
+      mapLoadedRef.current = false;
+      setMapLoaded(false);
+      mapInstanceRef.current = null;
       if (terraDraw) {
         try {
           terraDraw.stop();
@@ -175,53 +263,40 @@ export function AoiDrawMap({
         }
       }
     };
-  }, []);
+  }, [retryKey]);
 
-  const displayAoiOnMap = useCallback((map: any, aoi: GeoJSONPolygonGeometry) => {
-    if (!map || !map.isStyleLoaded()) return;
+  // Keep MapLibre source synchronized whenever initialAoi prop changes (e.g., Use demo area or Clear)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !mapLoaded) return;
 
-    if (map.getSource("custom-aoi-source")) {
-      map.getSource("custom-aoi-source").setData(aoi);
-    } else {
-      map.addSource("custom-aoi-source", {
-        type: "geojson",
-        data: aoi,
-      });
-
-      map.addLayer({
-        id: "custom-aoi-fill",
-        type: "fill",
-        source: "custom-aoi-source",
-        paint: {
-          "fill-color": "#3b82f6",
-          "fill-opacity": 0.25,
-        },
-      });
-
-      map.addLayer({
-        id: "custom-aoi-outline",
-        type: "line",
-        source: "custom-aoi-source",
-        paint: {
-          "line-color": "#60a5fa",
-          "line-width": 2,
-          "line-dasharray": [2, 1],
-        },
-      });
+    if (!initialAoi) {
+      lastTerraDrawJsonRef.current = null;
+      if (terraDrawRef.current) {
+        try {
+          terraDrawRef.current.clear();
+        } catch {
+          // ignore
+        }
+      }
+      clearAoiSource(map);
+      return;
     }
 
-    const val = validateAOI(aoi);
-    if (val.valid && val.bbox) {
-      const [w, s, e, n] = val.bbox;
-      map.fitBounds(
-        [
-          [w, s],
-          [e, n],
-        ],
-        { padding: 40, duration: 600 }
-      );
+    const incomingJson = JSON.stringify(initialAoi);
+    if (lastTerraDrawJsonRef.current === incomingJson) {
+      return;
     }
-  }, []);
+
+    if (terraDrawRef.current) {
+      try {
+        terraDrawRef.current.clear();
+      } catch {
+        // ignore
+      }
+    }
+    displayAoiOnMap(map, initialAoi);
+  }, [initialAoi, mapLoaded, displayAoiOnMap, clearAoiSource]);
 
   const handleModeChange = (mode: string) => {
     setActiveMode(mode);
@@ -331,6 +406,31 @@ export function AoiDrawMap({
           Clear
         </Button>
       </div>
+
+      {/* Style Load Failure Alert */}
+      {styleError && (
+        <div className="p-3 bg-slate-950/95 border-b border-slate-800 z-20">
+          <Alert variant="destructive">
+            <AlertTriangle className="w-4 h-4" />
+            <AlertTitle>Map Style Load Failed</AlertTitle>
+            <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs mt-1">
+              <span>Unable to load basemap tiles or style. You can retry loading or continue with coordinates.</span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setStyleError(false);
+                  setRetryKey((k) => k + 1);
+                }}
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       {/* Map Canvas / Container */}
       <div

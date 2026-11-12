@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   apiClient,
+  isApiError,
   saveRecentJob,
   type ValidateResponse,
   type JobStatusResponse,
@@ -126,9 +127,13 @@ function AnalysisContent() {
       return apiClient.getAnalysisStatus(activeJobId);
     },
     enabled: !!activeJobId,
+    retry: false,
     refetchInterval: (query) => {
       const state = query.state.data?.status;
       if (state === "completed" || state === "failed") {
+        return false;
+      }
+      if (query.state.status === "error") {
         return false;
       }
       return 2000; // Poll every 2 seconds (FR-10)
@@ -148,7 +153,7 @@ function AnalysisContent() {
     }
   }, [jobStatus, activeJobId]);
 
-  if (!beforeId || !afterId) {
+  if (!activeJobId && (!beforeId || !afterId)) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center flex flex-col items-center gap-4">
         <Activity className="w-12 h-12 text-slate-600 mb-2" />
@@ -166,6 +171,8 @@ function AnalysisContent() {
     );
   }
 
+  const displayBeforeId = beforeId || jobStatus?.before_id || "Loading...";
+  const displayAfterId = afterId || jobStatus?.after_id || "Loading...";
   const isCompatible = validationData?.compatible ?? false;
   const currentStage = jobStatus?.stage || "queued";
   const isJobRunning =
@@ -211,7 +218,7 @@ function AnalysisContent() {
             <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400">
               Before Observation
             </span>
-            <CardTitle className="font-mono text-base">{beforeId}</CardTitle>
+            <CardTitle className="font-mono text-base">{displayBeforeId}</CardTitle>
           </CardHeader>
         </Card>
 
@@ -220,7 +227,7 @@ function AnalysisContent() {
             <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400">
               After Observation
             </span>
-            <CardTitle className="font-mono text-base">{afterId}</CardTitle>
+            <CardTitle className="font-mono text-base">{displayAfterId}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -267,6 +274,31 @@ function AnalysisContent() {
           </CardHeader>
 
           <CardContent className="flex flex-col gap-6">
+            {/* Polling Error Alert (FR-10 / F-04: preserve last known status and offer Retry) */}
+            {jobError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="w-4 h-4" />
+                <AlertTitle>Polling Connection Error</AlertTitle>
+                <AlertDescription className="mt-1 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <span>
+                    {isApiError(jobError)
+                      ? jobError.error.message
+                      : "Failed to poll job status. Last known execution state is preserved."}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => refetchJob()}
+                    className="shrink-0"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                    Retry
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Failure Alert */}
             {isJobFailed && (
               <Alert variant="destructive">
@@ -420,8 +452,12 @@ function AnalysisContent() {
                 <Alert variant="destructive">
                   <AlertTriangle className="w-4 h-4" />
                   <AlertTitle>Validation Service Error</AlertTitle>
-                  <AlertDescription className="text-xs">
-                    Failed to validate observation pair against server.
+                  <AlertDescription className="text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-1">
+                    <span>Failed to validate observation pair against server.</span>
+                    <Button type="button" size="sm" variant="outline" onClick={() => revalidate()}>
+                      <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                      Retry
+                    </Button>
                   </AlertDescription>
                 </Alert>
               ) : (

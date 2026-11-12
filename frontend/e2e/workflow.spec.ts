@@ -16,11 +16,40 @@ test.describe('TerraWatch AI End-to-End Synthetic Workflow', () => {
       await page.goto('/dashboard');
       await expect(page.getByText(/DEMO DATA — SYNTHETIC, NOT REAL NISAR OBSERVATIONS/i)).toBeVisible();
       await expect(page.getByText('OK', { exact: true })).toBeVisible();
+
+      if (vp.name === 'mobile') {
+        const widths = await page.evaluate(() => ({
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        }));
+        expect(widths.scrollWidth).toBe(widths.clientWidth);
+
+        // Verify mobile menu is keyboard operable (F-02)
+        const toggle = page.getByRole('button', { name: /toggle navigation menu/i });
+        await toggle.focus();
+        await page.keyboard.press('Enter');
+        await expect(page.getByRole('navigation', { name: /mobile navigation/i })).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('navigation', { name: /mobile navigation/i })).toBeHidden();
+      }
+
       await page.getByRole('link', { name: /start analysis/i }).click();
       await expect(page).toHaveURL(/\/explore/);
 
-      // 2. Explore: click Use demo area, verify metrics, proceed to Observations
+      // 2. Explore: click Use demo area, verify MapLibre AOI source matches DEMO_AOI (F-05), proceed to Observations
       await page.getByRole('button', { name: /use demo area/i }).first().click();
+      const mapContainer = page.getByTestId('maplibre-container');
+      await expect(mapContainer).toHaveAttribute('data-aoi-geometry', /"type":"Polygon"/, { timeout: 10_000 });
+      const mapGeometryMatchesDemo = await page.evaluate(() => {
+        const el = document.querySelector('[data-testid="maplibre-container"]') as any;
+        const raw = el?.getAttribute('data-aoi-geometry');
+        const map = el?.__maplibreMap;
+        const sourceData = map?.getSource?.('custom-aoi-source')?._data;
+        if (!raw || !sourceData) return false;
+        return JSON.stringify(JSON.parse(raw)) === JSON.stringify(sourceData);
+      });
+      expect(mapGeometryMatchesDemo).toBe(true);
+
       const nextObsBtn = page.getByRole('button', { name: /next: select observations/i });
       await expect(nextObsBtn).toBeEnabled();
       await nextObsBtn.click();
@@ -50,6 +79,25 @@ test.describe('TerraWatch AI End-to-End Synthetic Workflow', () => {
 
       await page.getByRole('button', { name: /view results map/i }).first().click();
       await expect(page).toHaveURL(/\/results\?job=/);
+
+      const currentUrl = new URL(page.url());
+      const createdJobId = currentUrl.searchParams.get('job');
+      expect(createdJobId).toBeTruthy();
+
+      // Verify /analysis?job=<id> works without before/after params (F-03) and Dashboard shows Study Area + Recent Jobs (F-06)
+      await page.goto(`/analysis?job=${encodeURIComponent(createdJobId!)}`);
+      await expect(page.getByText(`Job ${createdJobId}`)).toBeVisible();
+      await expect(page.getByText('syn_before')).toBeVisible();
+      await expect(page.getByText('syn_after')).toBeVisible();
+
+      await page.goto('/dashboard');
+      await expect(page.getByText(/study area summary/i)).toBeVisible();
+      await expect(page.getByText('5 vertices')).toBeVisible();
+      await expect(page.getByText(createdJobId!)).toBeVisible();
+      await expect(page.getByText('COMPLETED').first()).toBeVisible();
+
+      // Return to Results page
+      await page.goto(`/results?job=${encodeURIComponent(createdJobId!)}`);
 
       // 5. Results: verify stats match expected_stats.json, limitations, synthetic badge, and layers
       await expect(page.getByTestId('stat-valid-pixels')).toHaveText('4,064');

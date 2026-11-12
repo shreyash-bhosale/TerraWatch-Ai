@@ -9,4 +9,5 @@ Format: Date | Decision | Reason
 - 2026-11-12 | E2E browser verification run via Playwright driving Chrome instead of chrome-devtools MCP | Chrome remote-debugging DevToolsActivePort not active in host Chrome profile; Playwright executes full real Chrome E2E workflow across 1280px, 820px, and 390px viewports.
 - 2026-11-12 | `app.processing.validation.validate_compatibility` is the single compatibility rule source of truth; V-VALID skips unreadable/corrupt TIFFs during sync validation | Keeps validation DRY across API and pipeline while preserving async `failed` job handling for corrupt rasters.
 - 2026-11-12 | Standardized HTTP 403/404/413/422 validation, unknown routes, and path-traversal errors under `INVALID_REQUEST` envelope | Keeps all non-2xx API responses compliant with the Section 6 error envelope without exposing internal paths.
+- 2026-11-12 | Dashboard derives recent analyses from client-side stored job IDs hydrated via `GET /api/analysis/{job_id}` | Preserves the strict 8-endpoint API contract without adding a ninth list endpoint while showing live server status.
 
