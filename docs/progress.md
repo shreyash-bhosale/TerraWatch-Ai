@@ -59,3 +59,12 @@
   - `make test`: `60 passed, 5 warnings in 0.65s` (pytest, including all 11 rule tests `V-SAME-ID`..`V-VALID`, `V-POL`/`V-ORBIT` warning cases, `test_identical_dimensions_alone_do_not_pass_validation`, and `test_validation_single_source_of_truth`) and `6 test files passed, 13 tests passed in 622ms` (Vitest).
   - `make build`: Next.js 14.2.18 built `9/9` routes cleanly.
   - `cd frontend && npm run test:e2e`: `3 passed (7.2s)` across `1280x800`, `820x1024`, and `390x844`.
+
+### Group 2 — API Hardening (`F-09`) — VERIFIED
+- **Pre-fix failing tests (`pytest backend/tests/api/test_health.py backend/tests/api/test_api_hardening.py --tb=no` before fix):**
+  - `8 failed, 2 passed, 1 warning in 0.22s` (`test_health_503_when_fixtures_absent`, `test_malformed_json_returns_error_envelope`, `test_wrong_field_type_returns_validation_details`, `test_oversize_request_body_returns_413_envelope`, `test_unknown_route_returns_error_envelope`, `test_unhandled_exception_returns_500_without_stacktrace`, `test_provider_not_implemented_maps_to_503_everywhere`, `test_path_traversal_and_absolute_paths_safe_envelope`).
+- **Post-fix verification:**
+  - `pytest backend/tests/api/test_health.py backend/tests/api/test_api_hardening.py -v`: `10 passed, 3 warnings in 0.24s`.
+  - `make test`: `69 passed, 7 warnings in 0.67s` (pytest) and `6 test files passed, 13 tests passed in 885ms` (Vitest).
+  - `make build`: Next.js 14.2.18 built `9/9` routes cleanly.
+  - `cd frontend && npm run test:e2e`: `3 passed (9.5s)` across `1280x800`, `820x1024`, and `390x844`.

@@ -44,7 +44,7 @@ class LocalProvider(BaseProvider):
         try:
             resolved.relative_to(base)
         except ValueError:
-            raise PermissionError(f"Access denied: Path traversal detected outside {base}")
+            raise PermissionError("Access denied: Path traversal detected")
         return resolved
 
     def _scan(self, warnings: Optional[List[str]] = None) -> Dict[str, Observation]:
@@ -132,7 +132,7 @@ class LocalProvider(BaseProvider):
     def get(self, id: str) -> Observation:
         # Prevent traversal in ID
         if ".." in id or "/" in id or "\\" in id:
-            raise PermissionError(f"Access denied: Invalid observation ID '{id}'")
+            raise PermissionError("Access denied: Invalid observation ID")
 
         catalog = self._scan()
         if id not in catalog:

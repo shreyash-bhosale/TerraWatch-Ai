@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     DATA_DIR: str = "data"
     LOCAL_DATA_DIR: str = "data/local"
     MAX_AOI_AREA_KM2: float = 50000.0
+    MAX_BODY_BYTES: int = 1_048_576
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 

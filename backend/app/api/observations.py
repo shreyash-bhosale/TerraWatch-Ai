@@ -56,6 +56,16 @@ def search_observations(request: ObservationSearchRequest):
             end_date=request.end_date,
         )
         return ObservationSearchResponse(observations=observations, warnings=warnings)
+    except NotImplementedError as e:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
+        )
+    except PermissionError:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Path traversal detected", "details": None}},
+        )
     except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -91,6 +101,16 @@ def list_observations(
     try:
         observations, total = provider.list(limit=limit, offset=offset)
         return ObservationListResponse(observations=observations, total=total)
+    except NotImplementedError as e:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
+        )
+    except PermissionError:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Path traversal detected", "details": None}},
+        )
     except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -129,10 +149,15 @@ def get_observation(id: str):
             status_code=status.HTTP_404_NOT_FOUND,
             content={"error": {"code": "OBSERVATION_NOT_FOUND", "message": f"Observation '{id}' not found", "details": None}},
         )
-    except PermissionError as e:
+    except NotImplementedError as e:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
+        )
+    except PermissionError:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content={"error": {"code": "FORBIDDEN", "message": str(e), "details": None}},
+            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Invalid observation identifier", "details": None}},
         )
     except Exception as e:
         return JSONResponse(

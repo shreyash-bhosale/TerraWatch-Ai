@@ -48,6 +48,11 @@ def validate_analysis_pair(request: ValidateRequest):
     # Provider access
     try:
         provider = get_provider()
+    except NotImplementedError as e:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
+        )
     except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -62,6 +67,16 @@ def validate_analysis_pair(request: ValidateRequest):
             status_code=status.HTTP_404_NOT_FOUND,
             content={"error": {"code": "OBSERVATION_NOT_FOUND", "message": f"Observation '{request.before_id}' not found", "details": None}},
         )
+    except PermissionError:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Invalid observation identifier", "details": None}},
+        )
+    except NotImplementedError as e:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
+        )
     except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -74,6 +89,16 @@ def validate_analysis_pair(request: ValidateRequest):
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={"error": {"code": "OBSERVATION_NOT_FOUND", "message": f"Observation '{request.after_id}' not found", "details": None}},
+        )
+    except PermissionError:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Invalid observation identifier", "details": None}},
+        )
+    except NotImplementedError as e:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
         )
     except Exception as e:
         return JSONResponse(
@@ -112,6 +137,11 @@ def create_analysis_job(request: JobCreateRequest):
     # Provider access
     try:
         provider = get_provider()
+    except NotImplementedError as e:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
+        )
     except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -126,6 +156,21 @@ def create_analysis_job(request: JobCreateRequest):
             status_code=status.HTTP_404_NOT_FOUND,
             content={"error": {"code": "OBSERVATION_NOT_FOUND", "message": f"Observation '{request.before_id}' not found", "details": None}},
         )
+    except PermissionError:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Invalid observation identifier", "details": None}},
+        )
+    except NotImplementedError as e:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
+        )
 
     try:
         after_obs = provider.get(request.after_id)
@@ -133,6 +178,21 @@ def create_analysis_job(request: JobCreateRequest):
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={"error": {"code": "OBSERVATION_NOT_FOUND", "message": f"Observation '{request.after_id}' not found", "details": None}},
+        )
+    except PermissionError:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Invalid observation identifier", "details": None}},
+        )
+    except NotImplementedError as e:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"error": {"code": "PROVIDER_NOT_AVAILABLE", "message": str(e), "details": None}},
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
         )
 
     # Compatibility check
@@ -221,12 +281,12 @@ def serve_output_file(job_id: str, filename: str):
     if ".." in job_id or "/" in job_id or "\\" in job_id:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content={"error": {"code": "FORBIDDEN", "message": "Access denied: Invalid job identifier", "details": None}},
+            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Invalid job identifier", "details": None}},
         )
     if ".." in filename or "/" in filename or "\\" in filename:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content={"error": {"code": "FORBIDDEN", "message": "Access denied: Invalid file name", "details": None}},
+            content={"error": {"code": "INVALID_REQUEST", "message": "Access denied: Invalid file name", "details": None}},
         )
 
     target_dir = (settings.outputs_data_path / job_id).resolve()
@@ -237,7 +297,7 @@ def serve_output_file(job_id: str, filename: str):
     except ValueError:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content={"error": {"code": "FORBIDDEN", "message": "Path traversal detected", "details": None}},
+            content={"error": {"code": "INVALID_REQUEST", "message": "Path traversal detected", "details": None}},
         )
 
     if not file_path.is_file():

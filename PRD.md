@@ -129,7 +129,7 @@ All are **Status: PLANNED** unless noted. Actor: User (U) or System (S). Each re
 
 **Error envelope (all non-2xx):** `{ "error": { "code": "STRING", "message": "human readable", "details": {} } }`
 
-Codes: `INVALID_GEOMETRY`, `OBSERVATION_NOT_FOUND`, `INCOMPATIBLE_OBSERVATIONS`, `JOB_NOT_FOUND`, `JOB_NOT_COMPLETED`, `RESULT_NOT_FOUND`, `PROVIDER_ERROR`, `PROVIDER_NOT_AVAILABLE`, `INTERNAL_ERROR`.
+Codes: `INVALID_REQUEST`, `INVALID_GEOMETRY`, `OBSERVATION_NOT_FOUND`, `INCOMPATIBLE_OBSERVATIONS`, `JOB_NOT_FOUND`, `JOB_NOT_COMPLETED`, `RESULT_NOT_FOUND`, `PROVIDER_ERROR`, `PROVIDER_NOT_AVAILABLE`, `INTERNAL_ERROR`.
 
 | Endpoint | Request | Success response | Errors |
 | --- | --- | --- | --- |
