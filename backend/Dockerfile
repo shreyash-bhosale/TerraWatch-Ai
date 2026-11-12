@@ -1,9 +1,9 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 
-# Install curl for container healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# Install curl for container healthcheck and libexpat1 required by rasterio wheel on Debian slim
+RUN apt-get update && apt-get install -y --no-install-recommends curl libexpat1 && rm -rf /var/lib/apt/lists/*
 
 # Install pinned Python dependencies
 COPY backend/requirements.txt ./backend/requirements.txt
