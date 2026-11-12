@@ -1,5 +1,4 @@
-from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Query, status
 from fastapi.responses import JSONResponse
 
 from app.providers.registry import get_provider

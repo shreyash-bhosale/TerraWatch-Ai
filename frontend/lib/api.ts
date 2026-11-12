@@ -138,12 +138,3 @@ export function saveRecentJob(job: RecentJobRecord): void {
     // ignore
   }
 }
-
-export function clearRecentJobs(): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(RECENT_JOBS_KEY);
-  } catch {
-    // ignore
-  }
-}

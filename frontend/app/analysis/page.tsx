@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   apiClient,
   isApiError,
   saveRecentJob,
-  type ValidateResponse,
   type JobStatusResponse,
 } from "@/lib/api";
 import { getStoredAOI, type GeoJSONPolygonGeometry } from "@/lib/geo";
@@ -33,9 +32,6 @@ import {
   Play,
   RotateCcw,
   Loader2,
-  Clock,
-  Sparkles,
-  MapPin,
   ShieldCheck,
   Activity,
 } from "lucide-react";
@@ -52,7 +48,6 @@ const PIPELINE_STAGES = [
 ] as const;
 
 function AnalysisContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const beforeId = searchParams.get("before");
@@ -341,7 +336,6 @@ function AnalysisContent() {
                   const currentStageIndex = PIPELINE_STAGES.findIndex((s) => s.id === currentStage);
                   const isPassed = !isJobFailed && (isJobCompleted || idx < currentStageIndex);
                   const isCurrent = !isJobCompleted && !isJobFailed && stage.id === currentStage;
-                  const isPending = !isJobCompleted && !isJobFailed && idx > currentStageIndex;
 
                   return (
                     <div

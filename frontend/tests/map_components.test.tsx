@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { AoiDrawMap } from '@/components/map/AoiDrawMap'
 import { ResultsMap } from '@/components/map/ResultsMap'
-import { DEMO_AOI, DEMO_BBOX } from '@/lib/geo'
+import { DEMO_AOI } from '@/lib/geo'
 import React from 'react'
 
 type EventCb = (payload?: any) => void
@@ -174,7 +174,7 @@ describe('MapLibre Components (F-05 & F-06)', () => {
     // ResultsMap style error shows Alert with Retry button
     render(
       <ResultsMap
-        bounds={DEMO_BBOX}
+        bounds={[73.8, 18.496, 73.864, 18.56]}
         layers={{ difference: '/diff.png', before: '/b.png', after: '/a.png' }}
         activeLayer="difference"
       />

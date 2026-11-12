@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple, Optional
+from typing import Tuple
 import numpy as np
 from rasterio.transform import Affine
 from rasterio.crs import CRS

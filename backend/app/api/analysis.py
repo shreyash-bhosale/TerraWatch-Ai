@@ -1,6 +1,4 @@
-from pathlib import Path
-from typing import Optional
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, status
 from fastapi.responses import FileResponse, JSONResponse
 
 from app.config import settings

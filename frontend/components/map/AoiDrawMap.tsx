@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { KEYLESS_BASEMAP_STYLE } from "@/lib/config";
 import {
   DEMO_AOI,
-  DEMO_BBOX,
   type GeoJSONPolygonGeometry,
   validateAOI,
 } from "@/lib/geo";

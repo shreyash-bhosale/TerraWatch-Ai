@@ -2,8 +2,6 @@ import type { components } from "./api-types";
 
 export type GeoJSONPolygonGeometry = components["schemas"]["GeoJSONPolygonGeometry"];
 
-export const DEMO_BBOX: [number, number, number, number] = [73.800, 18.496, 73.864, 18.560];
-
 export const DEMO_AOI: GeoJSONPolygonGeometry = {
   type: "Polygon",
   coordinates: [

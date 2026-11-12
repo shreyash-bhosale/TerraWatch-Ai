@@ -8,7 +8,7 @@ import { apiClient, type Observation } from "@/lib/api";
 import { getStoredAOI, type GeoJSONPolygonGeometry } from "@/lib/geo";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -27,8 +27,6 @@ import {
   RefreshCw,
   Check,
   MapPin,
-  Clock,
-  Info,
 } from "lucide-react";
 
 export default function ObservationsPage() {

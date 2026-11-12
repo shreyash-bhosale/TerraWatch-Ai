@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 import numpy as np
 import rasterio
 from rasterio.windows import Window
