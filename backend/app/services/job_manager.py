@@ -17,7 +17,8 @@ from app.schemas.analysis import (
     Stats,
 )
 from app.schemas.common import GeoJSONPolygonGeometry
-from app.services.validator import validate_aoi_geometry, validate_compatibility
+from app.processing.validation import validate_compatibility
+from app.services.validator import validate_aoi_geometry
 
 
 class JobNotFoundError(Exception):
@@ -117,11 +118,11 @@ class JobManager:
             raise KeyError(f"Observation '{after_id}' not found")
 
         # Validate Compatibility
-        compatible, rules, order = validate_compatibility(
+        val_res = validate_compatibility(
             obs_before, obs_after, aoi, provider=provider
         )
-        if not compatible:
-            failed_rules = [r.message for r in rules if not r.passed and r.severity == "error"]
+        if not val_res.compatible:
+            failed_rules = [r.message for r in val_res.rules if not r.passed and r.severity == "error"]
             raise ValueError(f"Incompatible observations: {'; '.join(failed_rules)}")
 
         job_id = f"job_{uuid.uuid4().hex[:12]}"
@@ -136,8 +137,8 @@ class JobManager:
             "created_at": now_iso,
             "started_at": None,
             "finished_at": None,
-            "before_id": order.before_id,
-            "after_id": order.after_id,
+            "before_id": val_res.order.before_id,
+            "after_id": val_res.order.after_id,
             "aoi": aoi.model_dump(),
             "synthetic": is_synthetic,
             "error": None,

@@ -20,7 +20,8 @@ from app.services.job_manager import (
     ResultNotFoundError,
     job_manager,
 )
-from app.services.validator import validate_aoi_geometry, validate_compatibility
+from app.processing.validation import validate_compatibility
+from app.services.validator import validate_aoi_geometry
 
 router = APIRouter(tags=["analysis"])
 
@@ -80,17 +81,11 @@ def validate_analysis_pair(request: ValidateRequest):
             content={"error": {"code": "PROVIDER_ERROR", "message": str(e), "details": None}},
         )
 
-    compatible, rules, order = validate_compatibility(
-        before=before_obs,
-        after=after_obs,
-        aoi=request.aoi,
+    return validate_compatibility(
+        obs_a=before_obs,
+        obs_b=after_obs,
+        aoi_geometry=request.aoi,
         provider=provider,
-    )
-
-    return ValidateResponse(
-        compatible=compatible,
-        rules=rules,
-        order=order,
     )
 
 
@@ -141,21 +136,21 @@ def create_analysis_job(request: JobCreateRequest):
         )
 
     # Compatibility check
-    compatible, rules, order = validate_compatibility(
-        before=before_obs,
-        after=after_obs,
-        aoi=request.aoi,
+    val_res = validate_compatibility(
+        obs_a=before_obs,
+        obs_b=after_obs,
+        aoi_geometry=request.aoi,
         provider=provider,
     )
-    if not compatible:
-        failed_msgs = [r.message for r in rules if not r.passed and r.severity == "error"]
+    if not val_res.compatible:
+        failed_msgs = [r.message for r in val_res.rules if not r.passed and r.severity == "error"]
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "error": {
                     "code": "INCOMPATIBLE_OBSERVATIONS",
                     "message": f"Observations cannot be differenced: {'; '.join(failed_msgs)}",
-                    "details": {"rules": [r.model_dump() for r in rules]},
+                    "details": {"rules": [r.model_dump() for r in val_res.rules]},
                 }
             },
         )

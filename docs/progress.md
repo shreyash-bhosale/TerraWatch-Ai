@@ -49,3 +49,13 @@
   - Next.js 14.2.18 compiled and prerendered 9/9 routes cleanly; grep for secret keys in `frontend/.next/static/chunks/app/` returned 0 matches.
 - **M7 NISAR Fact Audit:**
   - `grep -rnE "https?://|/science/|/LSAR/|/SSAR/|\.h5"` on M7 docs and `nisar_provider.py` returned 0 matches.
+
+## Audit Remediation Log
+
+### Group 1 — Validation Single Source of Truth (`F-07`, `F-08`) — VERIFIED
+- **Pre-fix failing tests (`pytest backend/tests/processing/test_validation.py -v` before fix):**
+  - `2 failed, 12 passed in 0.28s`: `test_v_valid_under_one_percent_fails` (`TypeError: validate_compatibility() got an unexpected keyword argument 'before_raster'`) and `test_validation_single_source_of_truth` (`AssertionError` because `app.services.validator` still duplicated `validate_compatibility`).
+- **Post-fix verification:**
+  - `make test`: `60 passed, 5 warnings in 0.65s` (pytest, including all 11 rule tests `V-SAME-ID`..`V-VALID`, `V-POL`/`V-ORBIT` warning cases, `test_identical_dimensions_alone_do_not_pass_validation`, and `test_validation_single_source_of_truth`) and `6 test files passed, 13 tests passed in 622ms` (Vitest).
+  - `make build`: Next.js 14.2.18 built `9/9` routes cleanly.
+  - `cd frontend && npm run test:e2e`: `3 passed (7.2s)` across `1280x800`, `820x1024`, and `390x844`.
