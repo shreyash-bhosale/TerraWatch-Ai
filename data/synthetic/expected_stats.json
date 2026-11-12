@@ -1,0 +1,12 @@
+{
+  "valid_pixel_count": 4064,
+  "invalid_pixel_count": 32,
+  "total_pixel_count": 4096,
+  "mean": -0.6889763779527559,
+  "median": 0.0,
+  "min": -7.0,
+  "max": 0.0,
+  "std": 2.0852208986801357,
+  "units": "dB",
+  "label": "DEMO DATA \u2014 SYNTHETIC, NOT REAL NISAR OBSERVATIONS"
+}

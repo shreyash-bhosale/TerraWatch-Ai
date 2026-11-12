@@ -1,0 +1,47 @@
+{
+  "id": "syn_after",
+  "provider": "synthetic_demo",
+  "synthetic": true,
+  "acquisition_date": "2026-01-13T00:00:00Z",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          73.8,
+          18.496
+        ],
+        [
+          73.86399999999999,
+          18.496
+        ],
+        [
+          73.86399999999999,
+          18.56
+        ],
+        [
+          73.8,
+          18.56
+        ],
+        [
+          73.8,
+          18.496
+        ]
+      ]
+    ]
+  },
+  "asset_location": "syn_after.tif",
+  "asset_format": "GTiff",
+  "product_name": "SYNTHETIC_SAR_L_LEVEL2",
+  "polarization": "HH",
+  "frequency_band": "L",
+  "orbit_direction": "ascending",
+  "processing_level": "L2",
+  "measurement_units": "dB",
+  "resolution": 0.001,
+  "crs": "EPSG:4326",
+  "source_metadata": {
+    "label": "synthetic",
+    "simulation_note": "DEMO DATA \u2014 SYNTHETIC, NOT REAL NISAR OBSERVATIONS"
+  }
+}

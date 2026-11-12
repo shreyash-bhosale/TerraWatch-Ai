@@ -1,0 +1,47 @@
+{
+  "id": "syn_misaligned",
+  "provider": "synthetic_demo",
+  "synthetic": true,
+  "acquisition_date": "2026-01-25T00:00:00Z",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          73.8,
+          18.432
+        ],
+        [
+          73.928,
+          18.432
+        ],
+        [
+          73.928,
+          18.56
+        ],
+        [
+          73.8,
+          18.56
+        ],
+        [
+          73.8,
+          18.432
+        ]
+      ]
+    ]
+  },
+  "asset_location": "syn_misaligned.tif",
+  "asset_format": "GTiff",
+  "product_name": "SYNTHETIC_SAR_L_LEVEL2",
+  "polarization": "HH",
+  "frequency_band": "L",
+  "orbit_direction": "ascending",
+  "processing_level": "L2",
+  "measurement_units": "dB",
+  "resolution": 0.002,
+  "crs": "EPSG:4326",
+  "source_metadata": {
+    "label": "synthetic",
+    "simulation_note": "DEMO DATA \u2014 SYNTHETIC, NOT REAL NISAR OBSERVATIONS"
+  }
+}
